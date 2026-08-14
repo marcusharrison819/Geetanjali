@@ -1,0 +1,213 @@
+/**
+ * DERIVED.CSS - Tier 3: State-Specific Tokens
+ *
+ * These tokens represent interactive states (hover, focus, active, disabled).
+ * They derive from semantic tokens and enable state changes without dark: prefixes.
+ *
+ * Usage in components:
+ *   hover:bg-[--interactive-primary-hover]
+ *   focus:ring-[--focus-ring]
+ *   disabled:bg-[--interactive-disabled-bg]
+ */
+
+:root {
+  /* ============================================
+     PRIMARY BUTTON STATES
+     ============================================ */
+  --interactive-primary-hover: var(--color-primary-700);
+  --interactive-primary-active: var(--color-primary-800);
+  --interactive-primary-disabled-bg: var(--color-primary-300);
+  --interactive-primary-disabled-text: var(--color-on-primary);
+
+  /* ============================================
+     SECONDARY BUTTON STATES
+     ============================================ */
+  --interactive-secondary-hover-bg: var(--color-neutral-50);
+  --interactive-secondary-hover-border: var(--color-neutral-400);
+  --interactive-secondary-active-bg: var(--color-neutral-100);
+  --interactive-secondary-disabled-bg: var(--color-neutral-100);
+  --interactive-secondary-disabled-text: var(--color-neutral-400);
+  --interactive-secondary-disabled-border: var(--color-neutral-200);
+
+  /* ============================================
+     GHOST BUTTON STATES
+     ============================================ */
+  --interactive-ghost-hover-text: var(--color-primary-700);
+  --interactive-ghost-hover-bg: color-mix(in srgb, var(--color-primary-50) 50%, transparent);
+  --interactive-ghost-active-bg: var(--color-primary-100);
+  --interactive-ghost-disabled-text: var(--color-neutral-400);
+
+  /* ============================================
+     CONTEXTUAL BUTTON STATES (Amber)
+     ============================================ */
+  --interactive-contextual-hover: var(--color-warm-700);
+  --interactive-contextual-active: var(--color-warm-800);
+  --interactive-contextual-disabled-bg: var(--color-warm-300);
+  --interactive-contextual-disabled-text: var(--color-on-primary);
+
+  /* ============================================
+     LINK STATES
+     ============================================ */
+  --text-link-active: var(--color-primary-800);
+  --text-link-visited: var(--color-primary-700);
+
+  /* ============================================
+     FOCUS STATES
+     ============================================ */
+  --focus-ring: var(--color-primary-500);
+  --focus-ring-offset: var(--color-surface-pure);
+  --focus-ring-width: 2px;
+
+  /* ============================================
+     CARD HOVER STATES
+     ============================================ */
+  --surface-warm-hover: var(--color-warm-100);
+  --border-warm-hover: var(--color-warm-300);
+  --surface-elevated-hover: var(--color-neutral-50);
+
+  /* ============================================
+     MENU/DROPDOWN STATES
+     ============================================ */
+  --menu-item-hover-bg: var(--color-primary-50);
+  --menu-item-selected-bg: var(--color-primary-100);
+  --menu-item-selected-text: var(--color-primary-900);
+
+  /* ============================================
+     INPUT STATES
+     ============================================ */
+  --input-border: var(--color-neutral-300);
+  --input-border-hover: var(--color-neutral-400);
+  --input-border-focus: var(--color-primary-500);
+  --input-border-error: var(--color-error-500);
+  /* Note: --input-bg is defined in semantic.css with warm tones */
+  --input-bg-disabled: var(--color-neutral-100);
+  --input-text: var(--color-neutral-900);
+  --input-text-placeholder: var(--color-neutral-400);
+  --input-text-disabled: var(--color-neutral-500);
+
+  /* ============================================
+     GENERAL DISABLED STATE
+     ============================================ */
+  --interactive-disabled-bg: var(--color-neutral-200);
+  --interactive-disabled-text: var(--color-neutral-500);
+  --interactive-disabled-border: var(--color-neutral-200);
+}
+
+/* ============================================
+   DARK MODE STATE OVERRIDES
+   ============================================ */
+.dark {
+  /* Primary button states */
+  --interactive-primary-hover: var(--color-primary-500);
+  --interactive-primary-active: var(--color-primary-400);
+  --interactive-primary-disabled-bg: var(--color-neutral-700);
+  --interactive-primary-disabled-text: var(--color-neutral-500);
+
+  /* Secondary button states */
+  --interactive-secondary-hover-bg: var(--color-neutral-700);
+  --interactive-secondary-hover-border: var(--color-neutral-500);
+  --interactive-secondary-active-bg: var(--color-neutral-600);
+  --interactive-secondary-disabled-bg: var(--color-neutral-800);
+  --interactive-secondary-disabled-text: var(--color-neutral-600);
+  --interactive-secondary-disabled-border: var(--color-neutral-700);
+
+  /* Ghost button states */
+  --interactive-ghost-hover-text: var(--color-primary-300);
+  --interactive-ghost-hover-bg: color-mix(in srgb, var(--color-primary-900) 30%, transparent);
+  --interactive-ghost-active-bg: color-mix(in srgb, var(--color-primary-800) 40%, transparent);
+  --interactive-ghost-disabled-text: var(--color-neutral-600);
+
+  /* Contextual button states */
+  --interactive-contextual-hover: var(--color-warm-400);
+  --interactive-contextual-active: var(--color-warm-300);
+  --interactive-contextual-disabled-bg: var(--color-neutral-700);
+  --interactive-contextual-disabled-text: var(--color-neutral-500);
+
+  /* Link states */
+  --text-link-active: var(--color-primary-200);
+  --text-link-visited: var(--color-primary-300);
+
+  /* Focus states */
+  --focus-ring: var(--color-primary-400);
+  --focus-ring-offset: var(--color-surface-pure-dark);
+
+  /* Card hover states */
+  --surface-warm-hover: var(--color-neutral-700);
+  --border-warm-hover: var(--color-neutral-600);
+  --surface-elevated-hover: var(--color-neutral-700);
+
+  /* Menu/dropdown states */
+  --menu-item-hover-bg: var(--color-neutral-700);
+  --menu-item-selected-bg: color-mix(in srgb, var(--color-primary-900) 40%, transparent);
+  --menu-item-selected-text: var(--color-primary-200);
+
+  /* Input states */
+  --input-border: var(--color-neutral-600);
+  --input-border-hover: var(--color-neutral-500);
+  --input-border-focus: var(--color-primary-400);
+  --input-border-error: var(--color-error-400);
+  /* Note: --input-bg is defined in semantic.css */
+  --input-bg-disabled: var(--color-neutral-800);
+  --input-text: var(--color-neutral-100);
+  --input-text-placeholder: var(--color-neutral-500);
+  --input-text-disabled: var(--color-neutral-600);
+
+  /* General disabled state */
+  --interactive-disabled-bg: var(--color-neutral-800);
+  --interactive-disabled-text: var(--color-neutral-600);
+  --interactive-disabled-border: var(--color-neutral-700);
+}
+
+/* ============================================
+   PROSE LIGHT MODE
+   Custom typography colors for Sacred Saffron theme
+   ============================================ */
+.prose {
+  --tw-prose-bold: var(--color-accent-800);
+  --tw-prose-links: var(--color-primary-700);
+}
+
+/* ============================================
+   PROSE DARK MODE
+   Auto-invert typography plugin in dark mode
+   Removes need for dark:prose-invert in components
+   ============================================ */
+.dark .prose {
+  --tw-prose-body: var(--color-neutral-300);
+  --tw-prose-headings: var(--color-neutral-100);
+  --tw-prose-lead: var(--color-neutral-400);
+  --tw-prose-links: var(--color-primary-400);
+  --tw-prose-bold: var(--color-neutral-100);
+  --tw-prose-counters: var(--color-neutral-400);
+  --tw-prose-bullets: var(--color-neutral-600);
+  --tw-prose-hr: var(--color-neutral-700);
+  --tw-prose-quotes: var(--color-neutral-100);
+  --tw-prose-quote-borders: var(--color-neutral-700);
+  --tw-prose-captions: var(--color-neutral-400);
+  --tw-prose-code: var(--color-neutral-100);
+  --tw-prose-pre-code: var(--color-neutral-300);
+  --tw-prose-pre-bg: var(--color-neutral-800);
+  --tw-prose-th-borders: var(--color-neutral-600);
+  --tw-prose-td-borders: var(--color-neutral-700);
+}
+
+/* ============================================
+   REDUCED MOTION PREFERENCES
+   Respects user accessibility settings
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-75: 0ms;
+    --duration-100: 0ms;
+    --duration-150: 0ms;
+    --duration-200: 0ms;
+    --duration-300: 0ms;
+    --duration-500: 0ms;
+    --duration-700: 0ms;
+    --duration-1000: 0ms;
+
+    --transition-fast: 0ms;
+    --transition-normal: 0ms;
+    --transition-slow: 0ms;
+  }
+}

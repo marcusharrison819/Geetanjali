@@ -1,0 +1,942 @@
+/**
+ * SEMANTIC.CSS - Tier 2: Semantic Tokens
+ *
+ * These tokens provide stable, meaningful names that reference primitives.
+ * Components use these tokens, not primitives directly.
+ *
+ * Dark mode is handled here - same token name, different value in .dark
+ *
+ * Categories:
+ * - Surface: Background colors
+ * - Text: Text colors
+ * - Border: Border colors
+ * - Interactive: Buttons, links, form elements
+ * - Section: Page section backgrounds
+ * - Gradient: Gradient endpoints
+ * - Typography: Font styles, sizes, spacing
+ * - Layout: Spacing, radius, shadows
+ * - Motion: Transitions, animations
+ */
+
+:root {
+  /* ============================================
+     SURFACE TOKENS - Background colors
+     ============================================ */
+
+  /* Base page background - slightly darker for card contrast */
+  --surface-base: var(--color-neutral-100);
+  /* Page background - alias for surface-base, used in layout components */
+  --surface-page: var(--surface-base);
+
+  /* Warm surface (cards with amber tint) - lighter than base for elevation */
+  --surface-warm: var(--color-warm-50);
+  --surface-warm-subtle: color-mix(in srgb, var(--color-warm-100) 50%, white);
+
+  /* Elevated surfaces (modals, dropdowns) */
+  --surface-elevated: var(--color-surface-pure);
+
+  /* Card surfaces (distinct from base) */
+  --surface-card: var(--surface-warm);
+
+  /* Muted/secondary backgrounds */
+  --surface-muted: var(--color-neutral-100);
+
+  /* Input backgrounds (warm off-white for visual distinction) */
+  /* Input backgrounds with visible border */
+  --input-bg: var(--color-warm-50);
+  --input-bg-focus: white;
+  --input-border: var(--color-neutral-400);
+
+  /* Sticky header/bar surfaces (with transparency for blur) */
+  --surface-sticky: color-mix(in srgb, var(--color-warm-50) 95%, transparent);
+
+  /* Translucent surfaces for blur effects */
+  --surface-sticky-translucent: color-mix(in srgb, var(--color-warm-50) 95%, transparent);
+  --surface-warm-translucent: color-mix(in srgb, var(--color-warm-50) 90%, transparent);
+  --surface-warm-translucent-subtle: color-mix(in srgb, var(--color-warm-50) 50%, transparent);
+  --surface-elevated-sticky: color-mix(in srgb, var(--color-surface-pure) 95%, transparent);
+  --surface-elevated-translucent: color-mix(in srgb, var(--color-surface-pure) 80%, transparent);
+  --surface-elevated-translucent-subtle: color-mix(in srgb, var(--color-surface-pure) 70%, transparent);
+  --surface-elevated-hover: color-mix(in srgb, var(--color-surface-pure) 90%, transparent);
+  --surface-muted-translucent: color-mix(in srgb, var(--color-neutral-100) 50%, transparent);
+  --surface-muted-translucent-subtle: color-mix(in srgb, var(--color-neutral-100) 30%, transparent);
+
+  /* Reading mode surface */
+  --surface-reading: var(--color-reading-50);
+  --surface-reading-elevated: white;
+  --surface-reading-header: color-mix(in srgb, var(--color-reading-50) 95%, transparent);
+  --surface-reading-header-solid: var(--color-reading-50);
+
+  /* Reading mode gradient stops (v1.22.0)
+     Use these for component-level gradients:
+     background: linear-gradient(180deg,
+       var(--reading-surface-base) 0%,
+       var(--reading-surface-mid) 50%,
+       var(--reading-surface-end) 100%);
+  */
+  --reading-surface-base: var(--color-reading-50);
+  --reading-surface-mid: var(--color-reading-100);
+  --reading-surface-end: var(--color-reading-200);
+  --reading-surface-highlight: #FFF8E8;
+
+  /* Reading mode text */
+  --text-reading-primary: var(--color-warm-700);
+  --text-reading-secondary: var(--color-warm-600);
+  --text-reading-muted: var(--color-warm-400);
+  --text-reading-accent: var(--color-warm-600);
+
+  /* Reading mode interactive */
+  --interactive-reading: var(--color-warm-700);
+  --interactive-reading-hover-bg: var(--color-warm-100);
+  --interactive-reading-active-bg: var(--color-warm-200);
+  --interactive-reading-disabled: var(--color-neutral-300);
+
+  /* Reading mode indicators */
+  --reading-indicator-active: var(--color-warm-500);
+  --reading-indicator-inactive: var(--color-warm-200);
+
+  /* Reading mode borders */
+  --border-reading-header: color-mix(in srgb, var(--color-warm-200) 50%, transparent);
+
+  /* ============================================
+     TEXT TOKENS - Text colors
+     ============================================ */
+
+  /* Primary text (headings, body) */
+  --text-primary: var(--color-neutral-900);
+
+  /* Secondary text (descriptions, metadata) */
+  --text-secondary: var(--color-neutral-600);
+
+  /* Tertiary/muted text (placeholders, hints) - WCAG AA: 4.5:1 min */
+  /* neutral-500 (#6b7280) on white provides ~5.3:1 ✓ */
+  --text-tertiary: var(--color-neutral-500);
+  /* neutral-500 for muted text instead of -400 for WCAG compliance */
+  --text-muted: var(--color-neutral-500);
+
+  /* Sanskrit/sacred text */
+  --text-sanskrit: var(--color-accent-900);
+  --text-sanskrit-secondary: var(--color-accent-700);
+
+  /* Link colors - WCAG AA: 4.5:1 min on white */
+  /* primary-700 (#c2410c) on white provides ~5.8:1 ✓ */
+  --text-link: var(--color-primary-700);
+  --text-link-hover: var(--color-primary-800);
+
+  /* Accent text (decorative icons, highlights) */
+  --text-accent: var(--color-warm-500);
+  --text-accent-hover: var(--color-warm-600);
+  --text-accent-muted: color-mix(in srgb, var(--color-warm-600) 70%, transparent);
+
+  /* Inverted text (on dark backgrounds) */
+  --text-inverted: var(--color-surface-pure);
+
+  /* ============================================
+     BORDER TOKENS - Border colors
+     ============================================ */
+
+  /* Default border - WCAG 3:1 for UI components */
+  /* neutral-400 (#9ca3af) on white provides ~3.0:1 for proper visibility */
+  --border-default: var(--color-neutral-400);
+  --border-default-hover: var(--color-neutral-500);
+
+  /* Warm border (amber-tinted cards) */
+  /* warm-300 for visible borders on warm surfaces */
+  --border-warm: var(--color-warm-300);
+  --border-warm-hover: var(--color-warm-500);
+  --border-warm-subtle: color-mix(in srgb, var(--color-warm-300) 50%, transparent);
+
+  /* Subtle/faint borders */
+  --border-subtle: var(--color-neutral-100);
+
+  /* Focus rings - WCAG 2.1: 3:1 min for UI components */
+  /* primary-600 (#ea580c) provides ~3.9:1 on white ✓ */
+  --border-focus: var(--color-primary-600);
+
+  /* Accent border (decorative elements, highlights) */
+  --border-accent: var(--color-accent-300);
+
+  /* Reading mode borders */
+  --border-reading: var(--color-reading-200);
+
+  /* ============================================
+     INTERACTIVE TOKENS - Buttons, links, inputs
+     ============================================ */
+
+  /* Primary action (main CTA buttons) - WCAG AA: 4.5:1 min contrast */
+  /* Using -700 for base state provides ~5.8:1 with white text (orange-700 #c2410c) */
+  --interactive-primary: var(--color-primary-700);
+  --interactive-primary-hover: var(--color-primary-800);
+  --interactive-primary-active: var(--color-primary-900);
+  --interactive-primary-text: var(--color-on-primary);
+  --interactive-primary-text-muted: var(--color-on-primary-muted);
+  --interactive-primary-disabled-bg: var(--color-primary-200);
+  --interactive-primary-disabled-text: var(--color-primary-500);
+
+  /* Primary gradient (hero/featured CTAs) - WCAG AA compliant */
+  --interactive-gradient-from: var(--color-primary-600);
+  --interactive-gradient-to: var(--color-red-600);
+  --interactive-gradient-from-hover: var(--color-primary-700);
+  --interactive-gradient-to-hover: var(--color-red-700);
+
+  /* Secondary action (outline buttons) - WCAG 3:1 border contrast */
+  --interactive-secondary-bg: white;
+  --interactive-secondary-text: var(--color-neutral-700);
+  /* neutral-400 (#9ca3af) on white provides ~3.0:1 for borders ✓ */
+  --interactive-secondary-border: var(--color-neutral-400);
+  --interactive-secondary-hover-bg: var(--color-neutral-50);
+  --interactive-secondary-hover-border: var(--color-neutral-500);
+  --interactive-secondary-disabled-bg: var(--color-neutral-100);
+  --interactive-secondary-disabled-text: var(--color-neutral-400);
+  --interactive-secondary-disabled-border: var(--color-neutral-300);
+
+  /* Ghost/text buttons - WCAG AA compliant */
+  --interactive-ghost-text: var(--color-primary-700);
+  --interactive-ghost-hover-bg: color-mix(in srgb, var(--color-primary-100) 50%, transparent);
+
+  /* Contextual actions (amber-themed) - WCAG AA compliant */
+  /* warm-700 (#b45309) on white provides ~5.7:1 ✓ */
+  --interactive-contextual: var(--color-warm-700);
+  --interactive-contextual-hover: var(--color-warm-800);
+  --interactive-contextual-text: var(--color-on-primary);
+
+  /* Disabled state */
+  --interactive-disabled: var(--color-neutral-400);
+
+  /* ============================================
+     SECTION TOKENS - Semantic page sections
+     ============================================ */
+
+  /* Verse/scripture sections */
+  --section-verse-bg: var(--color-warm-50);
+  --section-verse-border: var(--color-warm-200);
+
+  /* Reflection/insight sections */
+  --section-reflection-bg: color-mix(in srgb, var(--color-warm-100) 30%, white);
+
+  /* Navigation sections */
+  --section-nav-bg: white;
+  --section-nav-border: var(--color-neutral-200);
+
+  /* ============================================
+     GRADIENT TOKENS - Page gradients
+     ============================================ */
+
+  /* Main page gradient (primary to accent) - theme-aware */
+  --gradient-page-from: var(--color-primary-50);
+  --gradient-page-to: var(--color-accent-50);
+
+  /* Warm gradient */
+  --gradient-warm-from: var(--color-warm-50);
+  --gradient-warm-to: var(--color-primary-50);
+
+  /* Accent gradient (for text and decorative elements) */
+  --gradient-accent-to: var(--color-accent-600);
+
+  /* FAB gradient - WCAG AA compliant with white text */
+  --gradient-fab-from: var(--color-primary-600);
+  --gradient-fab-to: var(--color-primary-700);
+  --gradient-fab-hover-from: var(--color-primary-700);
+  --gradient-fab-hover-to: var(--color-primary-800);
+  --shadow-fab: color-mix(in srgb, var(--color-primary-700) 30%, transparent);
+  --shadow-fab-hover: color-mix(in srgb, var(--color-primary-700) 40%, transparent);
+
+  /* ============================================
+     DECORATIVE TOKENS
+     ============================================ */
+
+  /* Om symbol and decorative elements */
+  --decorative-om: color-mix(in srgb, var(--color-warm-400) 50%, transparent);
+  --decorative-heart: color-mix(in srgb, var(--color-accent-400) 60%, transparent);
+  --decorative-sparkle: color-mix(in srgb, var(--color-warm-300) 60%, transparent);
+
+  /* Favorite/like indicator - theme-aware accent colors */
+  --icon-favorite: var(--color-accent-500);
+  --icon-favorite-muted: var(--color-accent-300);
+
+  /* Logo colors - themeable via LogoIcon component */
+  --logo-bg-start: var(--interactive-primary);
+  --logo-bg-end: var(--color-primary-500);
+  /* v1.22.0: Logo petals updated to match Turmeric Gold palette */
+  --logo-petal-outer: var(--color-warm-100);  /* #FFF8E1 */
+  --logo-petal-inner: var(--color-warm-200);  /* #FFECB3 */
+  --logo-sun-glow: var(--color-warm-300);     /* #FFD54F */
+  --logo-sun-core: #991B1B;
+  --logo-sun-highlight: #FEF3C7;
+  --logo-sun-edge: #DC2626;
+
+  /* Decorative dividers */
+  --divider-warm: var(--color-warm-300);
+  --divider-warm-subtle: var(--color-warm-200);
+
+  /* Badges and tags */
+  --badge-default-bg: var(--color-neutral-100);
+  --badge-default-text: var(--color-neutral-700);
+  --badge-warm-bg: var(--color-warm-100);
+  --badge-warm-text: var(--color-warm-700);
+  --badge-warm-hover: var(--color-warm-200);
+  --badge-primary-bg: var(--color-primary-100);
+  --badge-primary-text: var(--color-primary-800);
+  --badge-primary-hover: var(--color-primary-200);
+
+  /* Domain-specific badges */
+  --badge-principle-bg: var(--color-warm-100);
+  --badge-principle-text: var(--color-warm-800);
+  --badge-match-bg: var(--color-primary-100);
+  --badge-match-text: var(--color-primary-800);
+  --badge-featured-bg: var(--color-accent-100);
+  --badge-featured-text: var(--color-accent-800);
+
+  /* ============================================
+     OVERLAY & SKELETON TOKENS
+     ============================================ */
+
+  /* Modal overlay */
+  --overlay-bg: color-mix(in srgb, black 50%, transparent);
+  --overlay-bg-light: color-mix(in srgb, black 20%, transparent);
+
+  /* Skeleton loading */
+  --skeleton-bg: var(--color-neutral-200);
+  --skeleton-highlight: var(--color-neutral-100);
+
+  /* Field surfaces (selection areas, input containers) */
+  --surface-field: var(--color-neutral-50);
+
+  /* Selection chips/pills (e.g., tab selections) - must be MORE prominent than badge-warm */
+  --chip-selected-bg: var(--color-warm-200);
+  --chip-selected-text: var(--color-warm-900);
+  --chip-selected-ring: var(--color-warm-400);
+
+  /* Selected button/option (primary-colored) */
+  --option-selected-bg: var(--color-primary-100);
+  --option-selected-text: var(--color-primary-700);
+  --option-selected-border: var(--color-primary-300);
+
+  /* Goal indicators (circular badges) */
+  --goal-indicator-bg: var(--color-warm-200);
+  --goal-indicator-text: var(--color-warm-700);
+
+  /* Avatar placeholder */
+  --avatar-placeholder-bg: var(--color-neutral-400);
+
+  /* Section icon decorations (categorical) */
+  --section-icon-goals-bg: var(--color-purple-100);
+  --section-icon-goals-text: var(--color-purple-600);
+  --section-icon-newsletter-bg: var(--color-warm-100);
+  --section-icon-reading-bg: var(--color-blue-100);
+  --section-icon-reading-text: var(--color-blue-600);
+  --section-icon-appearance-bg: var(--color-indigo-100);
+  --section-icon-appearance-text: var(--color-indigo-600);
+
+  /* Info/prompt sections (purple tint) */
+  --prompt-bg: var(--color-purple-50);
+  --prompt-border: var(--color-purple-200);
+  --prompt-text: var(--color-purple-800);
+  --prompt-button-bg: var(--color-purple-100);
+  --prompt-button-text: var(--color-purple-700);
+
+  /* ============================================
+     STATUS TOKENS - Error, Warning, Success
+     ============================================ */
+
+  /* Error states - WCAG AA: 4.5:1 min for text */
+  --status-error-bg: var(--color-error-50);
+  /* error-700 (#b91c1c) on error-50 provides ~6.5:1 ✓ */
+  --status-error-text: var(--color-error-700);
+  --status-error-border: var(--color-error-300);
+
+  /* Error/danger button hover states (derived) */
+  --status-error-hover-bg: var(--color-error-100);
+  --status-error-hover-border: var(--color-error-300);
+  --status-error-active-bg: var(--color-error-200);
+
+  /* Info states (blue) - WCAG AA compliant */
+  --status-info-bg: var(--color-blue-50);
+  /* blue-700 (#1d4ed8) on blue-50 provides ~7.0:1 ✓ */
+  --status-info-text: var(--color-blue-700);
+  --status-info-border: var(--color-blue-300);
+
+  /* Warning states - WCAG AA compliant */
+  --status-warning-bg: var(--color-warning-50);
+  /* warning-800 (#854d0e) on warning-50 provides ~6.5:1 ✓ */
+  --status-warning-text: var(--color-warning-800);
+  --status-warning-border: var(--color-warning-300);
+
+  /* Success states - WCAG AA compliant */
+  --status-success-bg: var(--color-success-50);
+  /* success-700 (#15803d) on success-50 provides ~5.5:1 ✓ */
+  --status-success-text: var(--color-success-700);
+  --status-success-border: var(--color-success-300);
+
+  /* ============================================
+     TYPOGRAPHY TOKENS - Semantic font styles
+     ============================================ */
+
+  /* Font family semantic aliases */
+  --font-heading: var(--font-family-display);
+  --font-body: var(--font-family-body);
+  --font-sanskrit: var(--font-family-sanskrit);
+  --font-code: var(--font-family-mono);
+
+  /* ============================================
+     TYPE SCALE - Semantic text styles
+     Each combines: size, weight, line-height, tracking
+     ============================================ */
+
+  /* Display - Hero headlines */
+  --text-display-size: var(--font-size-5xl);
+  --text-display-weight: var(--font-weight-bold);
+  --text-display-line-height: var(--line-height-tight);
+  --text-display-tracking: var(--letter-spacing-tight);
+
+  /* Heading Large - Page titles */
+  --text-heading-lg-size: var(--font-size-3xl);
+  --text-heading-lg-weight: var(--font-weight-bold);
+  --text-heading-lg-line-height: var(--line-height-tight);
+
+  /* Heading Medium - Section titles */
+  --text-heading-md-size: var(--font-size-2xl);
+  --text-heading-md-weight: var(--font-weight-semibold);
+  --text-heading-md-line-height: var(--line-height-snug);
+
+  /* Heading Small - Subsection titles */
+  --text-heading-sm-size: var(--font-size-xl);
+  --text-heading-sm-weight: var(--font-weight-semibold);
+  --text-heading-sm-line-height: var(--line-height-snug);
+
+  /* Body Large - Emphasized body text */
+  --text-body-lg-size: var(--font-size-lg);
+  --text-body-lg-weight: var(--font-weight-normal);
+  --text-body-lg-line-height: var(--line-height-relaxed);
+
+  /* Body - Default body text */
+  --text-body-size: var(--font-size-base);
+  --text-body-weight: var(--font-weight-normal);
+  --text-body-line-height: var(--line-height-normal);
+
+  /* Body Small - Secondary text */
+  --text-body-sm-size: var(--font-size-sm);
+  --text-body-sm-weight: var(--font-weight-normal);
+  --text-body-sm-line-height: var(--line-height-normal);
+
+  /* Caption - Labels, hints, metadata */
+  --text-caption-size: var(--font-size-xs);
+  --text-caption-weight: var(--font-weight-medium);
+  --text-caption-line-height: var(--line-height-normal);
+  --text-caption-tracking: var(--letter-spacing-wide);
+
+  /* Label - Form labels, buttons */
+  --text-label-size: var(--font-size-sm);
+  --text-label-weight: var(--font-weight-medium);
+  --text-label-line-height: var(--line-height-normal);
+
+  /* Sanskrit - Verse text (special treatment) */
+  --text-sanskrit-size: var(--font-size-xl);
+  --text-sanskrit-weight: var(--font-weight-medium);
+  --text-sanskrit-line-height: var(--line-height-relaxed);
+  --text-sanskrit-tracking: var(--letter-spacing-wide);
+
+  /* ============================================
+     LAYOUT TOKENS - Semantic spacing & radii
+     ============================================ */
+
+  /* Component spacing - internal padding */
+  --spacing-card: var(--spacing-4);
+  --spacing-card-sm: var(--spacing-3);
+  --spacing-card-lg: var(--spacing-6);
+  --spacing-section: var(--spacing-8);
+  --spacing-element: var(--spacing-3);
+  --spacing-inline: var(--spacing-2);
+
+  /* Component gaps - between elements */
+  --gap-xs: var(--spacing-1);
+  --gap-sm: var(--spacing-2);
+  --gap-md: var(--spacing-3);
+  --gap-lg: var(--spacing-4);
+  --gap-xl: var(--spacing-6);
+  --gap-section: var(--spacing-8);
+
+  /* Page margins */
+  --margin-page-x: var(--spacing-4);
+  --margin-page-x-sm: var(--spacing-6);
+  --margin-page-x-lg: var(--spacing-8);
+  --margin-page-y: var(--spacing-6);
+
+  /* Max-widths for content containers */
+  --max-w-prose: 65ch;
+  --max-w-content: 42rem;       /* 672px - narrow content */
+  --max-w-content-md: 48rem;    /* 768px - medium content */
+  --max-w-content-lg: 64rem;    /* 1024px - wide content */
+  --max-w-content-xl: 80rem;    /* 1280px - full content */
+  --max-w-modal: 28rem;         /* 448px - modals */
+  --max-w-modal-lg: 36rem;      /* 576px - large modals */
+  --max-w-dropdown: 20rem;      /* 320px - dropdowns */
+
+  /* Component radii - Complete taxonomy */
+  --radius-button: var(--radius-lg);      /* 8px - all buttons, icon buttons */
+  --radius-card: var(--radius-xl);        /* 12px - all card containers */
+  --radius-input: var(--radius-lg);       /* 8px - form inputs, textareas */
+  --radius-badge: var(--radius-full);     /* full - badges, pills */
+  --radius-modal: var(--radius-2xl);      /* 16px - modals, dialogs */
+  --radius-tooltip: var(--radius-md);     /* 6px - tooltips */
+  --radius-dropdown: var(--radius-xl);    /* 12px - dropdowns, popovers, menus */
+  --radius-avatar: var(--radius-full);    /* full - avatars, profile pics */
+  --radius-chip: var(--radius-full);      /* full - chips, time/goal selectors */
+  --radius-skeleton: var(--radius-sm);    /* 2px - skeleton loaders */
+  --radius-nav: var(--radius-md);         /* 6px - navigation items */
+  --radius-toast: var(--radius-xl);       /* 12px - toast notifications */
+  --radius-progress: var(--radius-full);  /* full - progress bars */
+
+  /* Shadows - Complete taxonomy */
+  --shadow-card: var(--shadow-sm);
+  --shadow-card-hover: var(--shadow-md);
+  --shadow-card-elevated: var(--shadow-lg);
+  --shadow-dropdown: var(--shadow-lg);
+  --shadow-popover: var(--shadow-lg);
+  --shadow-modal: var(--shadow-xl);
+  --shadow-button: var(--shadow-xs);
+  --shadow-button-active: var(--shadow-inner);
+  --shadow-tooltip: var(--shadow-md);
+  --shadow-toast: var(--shadow-lg);
+  --shadow-navbar: var(--shadow-xs);
+  --shadow-input-focus: 0 0 0 3px color-mix(in srgb, var(--color-primary-500) 20%, transparent);
+
+  /* ============================================
+     MOTION TOKENS - Semantic transitions
+     ============================================ */
+
+  /* Duration semantic aliases */
+  --duration-instant: var(--duration-0);
+  --duration-fast: var(--duration-150);
+  --duration-normal: var(--duration-200);
+  --duration-slow: var(--duration-300);
+  --duration-slower: var(--duration-500);
+
+  /* Easing semantic alias */
+  --ease-default: var(--ease-in-out);
+
+  /* Transition presets (duration + easing) */
+  --transition-fast: var(--duration-100) var(--ease-out);
+  --transition-normal: var(--duration-200) var(--ease-in-out);
+  --transition-slow: var(--duration-300) var(--ease-in-out);
+
+  /* Component-specific transitions */
+  --transition-button: var(--transition-fast);
+  --transition-card: var(--transition-normal);
+  --transition-modal: var(--transition-slow);
+  --transition-dropdown: var(--transition-normal);
+  --transition-toast: var(--transition-slow);
+  --transition-nav: var(--transition-normal);
+
+  /* Property-specific transitions */
+  --transition-color: color var(--duration-150) var(--ease-in-out);
+  --transition-colors: var(--transition-color);
+  --transition-transform: transform var(--duration-200) var(--ease-out);
+  --transition-opacity: opacity var(--duration-200) var(--ease-in-out);
+  --transition-shadow: box-shadow var(--duration-150) var(--ease-in-out);
+  --transition-all: all var(--duration-200) var(--ease-in-out);
+}
+
+/* ============================================
+   DARK MODE OVERRIDES
+   ============================================ */
+.dark {
+  /* ============================================
+     WARM CHARCOAL NEUTRALS (v1.22.0)
+     Override neutral scale for warmer dark mode
+     Creates "diya-lit room" feel vs cold gray
+     ============================================ */
+  --color-neutral-50: #F5F3F2;
+  --color-neutral-100: #E8E4E0;
+  --color-neutral-200: #D4CEC8;
+  --color-neutral-300: #B5ADA4;
+  --color-neutral-400: #948A7E;
+  --color-neutral-500: #756B60;
+  --color-neutral-600: #5A524A;
+  --color-neutral-700: #3D3835;
+  --color-neutral-800: #252220;
+  --color-neutral-900: #1A1614;
+  --color-neutral-950: #0D0C0B;
+
+  /* Surface tokens - IMPROVED hierarchy with clear visual layers */
+  --surface-base: var(--color-neutral-900);
+  /* Page background - alias for surface-base, used in layout components */
+  --surface-page: var(--surface-base);
+  /* Subtle warmth in dark mode - refined amber undertone without being too orange */
+  --surface-warm: color-mix(in srgb, var(--color-warm-900) 20%, var(--color-neutral-800));
+  --surface-warm-subtle: color-mix(in srgb, var(--color-warm-900) 12%, var(--color-neutral-800));
+  /* Clearer surface hierarchy: base → card → elevated with visible contrast */
+  --surface-elevated: var(--color-neutral-700);
+  --surface-card: var(--color-neutral-800);
+  --surface-muted: color-mix(in srgb, var(--color-neutral-800) 60%, var(--color-neutral-900));
+  --input-bg: var(--color-neutral-800);
+  --input-bg-focus: var(--color-neutral-750, var(--color-neutral-700));
+  /* Input border - lighter shade for better visibility in dark mode */
+  --input-border: var(--color-neutral-400);
+  --surface-sticky: color-mix(in srgb, var(--color-neutral-900) 95%, transparent);
+
+  /* Translucent surfaces for blur effects (dark mode) */
+  --surface-sticky-translucent: color-mix(in srgb, var(--color-neutral-900) 95%, transparent);
+  --surface-warm-translucent: color-mix(in srgb, var(--color-neutral-800) 90%, transparent);
+  --surface-warm-translucent-subtle: color-mix(in srgb, var(--color-neutral-800) 50%, transparent);
+  --surface-elevated-sticky: color-mix(in srgb, var(--color-neutral-700) 95%, transparent);
+  --surface-elevated-translucent: color-mix(in srgb, var(--color-neutral-700) 80%, transparent);
+  --surface-elevated-translucent-subtle: color-mix(in srgb, var(--color-neutral-700) 70%, transparent);
+  --surface-elevated-hover: color-mix(in srgb, var(--color-neutral-700) 90%, transparent);
+  --surface-muted-translucent: color-mix(in srgb, var(--color-neutral-800) 50%, transparent);
+  --surface-muted-translucent-subtle: color-mix(in srgb, var(--color-neutral-800) 30%, transparent);
+  --surface-reading: var(--color-neutral-900);
+  --surface-reading-elevated: var(--color-neutral-800);
+  --surface-reading-header: color-mix(in srgb, var(--color-neutral-900) 95%, transparent);
+  --surface-reading-header-solid: var(--color-neutral-900);
+
+  /* Reading mode gradient stops (dark - v1.22.0)
+     Warm charcoal gradient for "diya-lit" feel */
+  --reading-surface-base: var(--color-neutral-900);
+  --reading-surface-mid: var(--color-neutral-950);
+  --reading-surface-end: #0A0908;
+  --reading-surface-highlight: var(--color-neutral-800);
+
+  /* Reading mode text (dark) - quiet library feel, neutral with subtle warmth */
+  --text-reading-primary: var(--color-reading-200);
+  --text-reading-secondary: var(--color-reading-300);
+  --text-reading-muted: var(--color-reading-500);
+  --text-reading-accent: var(--color-warm-500);
+
+  /* Reading mode interactive (dark) */
+  --interactive-reading: var(--color-reading-300);
+  --interactive-reading-hover-bg: var(--color-reading-800);
+  --interactive-reading-active-bg: var(--color-reading-700);
+  --interactive-reading-disabled: var(--color-reading-600);
+
+  /* Reading mode indicators (dark) */
+  --reading-indicator-active: var(--color-reading-400);
+  --reading-indicator-inactive: var(--color-reading-700);
+
+  /* Reading mode borders (dark) */
+  --border-reading-header: color-mix(in srgb, var(--color-reading-700) 50%, transparent);
+
+  /* Text tokens - WCAG AA: 4.5:1 min on dark backgrounds */
+  /* Quiet library feel: softer off-white instead of harsh pure white */
+  --text-primary: var(--color-neutral-200);
+  /* Secondary text: neutral-300 gives ~9:1 contrast (readable but softer) */
+  /* NOTE: neutral-400 was too dark (~#737373) causing "dark text on dark" */
+  --text-secondary: var(--color-neutral-300);
+  --text-tertiary: var(--color-neutral-400);
+  /* Muted text - neutral-400 provides ~5.3:1 on dark bg (WCAG AA compliant) */
+  --text-muted: var(--color-neutral-400);
+  --text-sanskrit: var(--color-accent-300);
+  --text-sanskrit-secondary: var(--color-accent-400);
+  /* Links - standard contrast for dark surfaces */
+  --text-link: var(--color-primary-400);
+  --text-link-hover: var(--color-primary-300);
+  /* Accent text - muted warmth for quiet library feel */
+  --text-accent: var(--color-warm-500);
+  --text-accent-hover: var(--color-warm-400);
+  --text-accent-muted: color-mix(in srgb, var(--color-warm-600) 60%, transparent);
+
+  /* Border tokens */
+  --border-default: var(--color-neutral-700);
+  --border-warm: color-mix(in srgb, var(--color-warm-700) 35%, var(--color-neutral-700)); /* Subtle warmth */
+  --border-warm-subtle: color-mix(in srgb, var(--color-warm-800) 25%, transparent);
+  --border-subtle: var(--color-neutral-800);
+  --border-focus: var(--color-primary-400);
+  --border-accent: var(--color-accent-500);
+  --border-reading: var(--color-reading-700);
+
+  /* Interactive tokens - WCAG AA compliant for dark mode */
+  /* orange-700 (#c2410c) with white text provides ~5.8:1 contrast (AA compliant) */
+  /* Theme overrides handle inverted scales (Sutra/Serenity/Forest) */
+  --interactive-primary: var(--color-primary-700);
+  --interactive-primary-hover: var(--color-primary-500);
+  --interactive-primary-active: var(--color-primary-400);
+  --interactive-primary-text: var(--color-on-primary);
+  --interactive-primary-text-muted: var(--color-on-primary-muted);
+  --interactive-primary-disabled-bg: var(--color-primary-800);
+  --interactive-primary-disabled-text: var(--color-primary-500);
+  --interactive-secondary-bg: var(--color-neutral-800);
+  --interactive-secondary-text: var(--color-neutral-200);
+  /* neutral-500 border provides 3:1 against neutral-900 */
+  --interactive-secondary-border: var(--color-neutral-500);
+  --interactive-secondary-hover-bg: var(--color-neutral-700);
+  --interactive-secondary-hover-border: var(--color-neutral-400);
+  --interactive-secondary-disabled-bg: var(--color-neutral-800);
+  --interactive-secondary-disabled-text: var(--color-neutral-500);
+  --interactive-secondary-disabled-border: var(--color-neutral-600);
+  /* Ghost buttons: neutral with subtle primary hint */
+  --interactive-ghost-text: var(--color-neutral-300);
+  --interactive-ghost-hover-bg: color-mix(in srgb, var(--color-neutral-700) 50%, transparent);
+  /* Contextual actions: neutral, not warm */
+  --interactive-contextual: var(--color-neutral-600);
+  --interactive-contextual-hover: var(--color-neutral-500);
+  --interactive-contextual-text: var(--color-neutral-100);
+  --interactive-disabled: var(--color-neutral-600);
+
+  /* Section tokens */
+  --section-verse-bg: var(--color-neutral-800);
+  --section-verse-border: var(--color-neutral-700);
+  --section-reflection-bg: color-mix(in srgb, var(--color-neutral-800) 50%, var(--color-neutral-900));
+  --section-nav-bg: var(--color-neutral-900);
+  --section-nav-border: var(--color-neutral-800);
+
+  /* Gradient tokens - subtle transitions in dark mode */
+  --gradient-page-from: var(--color-neutral-900);
+  --gradient-page-to: color-mix(in srgb, var(--color-neutral-800) 30%, var(--color-neutral-900));
+  --gradient-warm-from: var(--color-neutral-900);
+  --gradient-warm-to: color-mix(in srgb, var(--color-warm-900) 10%, var(--color-neutral-900));
+
+  /* Decorative tokens - subtle neutral presence */
+  --decorative-om: color-mix(in srgb, var(--color-neutral-400) 50%, transparent);
+  --decorative-heart: color-mix(in srgb, var(--color-accent-300) 50%, transparent);
+  --decorative-sparkle: color-mix(in srgb, var(--color-neutral-400) 50%, transparent);
+
+  /* Favorite/like indicator - theme-aware accent colors */
+  --icon-favorite: var(--color-accent-400);
+  --icon-favorite-muted: var(--color-accent-200);
+
+  /* Logo colors (dark mode) - subtle adjustments for dark backgrounds */
+  --logo-sun-highlight: #FEF3C7;
+  --logo-sun-edge: #EF4444;
+
+  /* Decorative dividers - neutral with subtle warm tint */
+  --divider-warm: color-mix(in srgb, var(--color-warm-700) 30%, var(--color-neutral-600));
+  --divider-warm-subtle: var(--color-neutral-700);
+
+  /* Badge tokens - neutral-forward with subtle warm tint */
+  /* Dark gray backgrounds with light text for clean, non-orange appearance */
+  --badge-default-bg: var(--color-neutral-700);
+  --badge-default-text: var(--color-neutral-200);
+  --badge-warm-bg: color-mix(in srgb, var(--color-warm-800) 20%, var(--color-neutral-700));
+  --badge-warm-text: var(--color-neutral-200);
+  --badge-warm-hover: color-mix(in srgb, var(--color-warm-700) 25%, var(--color-neutral-600));
+  --badge-primary-bg: var(--color-neutral-700);
+  --badge-primary-text: var(--color-neutral-200);
+  --badge-primary-hover: var(--color-neutral-600);
+
+  /* Domain-specific badges (dark mode) - neutral with warm accent */
+  --badge-principle-bg: color-mix(in srgb, var(--color-warm-800) 20%, var(--color-neutral-700));
+  --badge-principle-text: var(--color-neutral-200);
+  --badge-match-bg: var(--color-neutral-700);
+  --badge-match-text: var(--color-neutral-200);
+  --badge-featured-bg: var(--color-accent-800);
+  --badge-featured-text: var(--color-accent-200);
+
+  /* Overlay & Skeleton (dark mode) */
+  --overlay-bg: color-mix(in srgb, black 70%, transparent);
+  --overlay-bg-light: color-mix(in srgb, black 40%, transparent);
+  --skeleton-bg: var(--color-neutral-700);
+  --skeleton-highlight: var(--color-neutral-600);
+
+  /* Gradient tokens (dark mode) - WCAG AA compliant */
+  --gradient-accent-to: var(--color-accent-500);
+  /* Use darker shades for FAB to ensure white text contrast */
+  --gradient-fab-from: var(--color-primary-600);
+  --gradient-fab-to: var(--color-primary-700);
+  --gradient-fab-hover-from: var(--color-primary-500);
+  --gradient-fab-hover-to: var(--color-primary-600);
+  --shadow-fab: color-mix(in srgb, var(--color-primary-600) 40%, transparent);
+  --shadow-fab-hover: color-mix(in srgb, var(--color-primary-600) 50%, transparent);
+
+  /* Field surfaces */
+  --surface-field: color-mix(in srgb, var(--color-neutral-700) 50%, var(--color-neutral-800));
+
+  /* Selection chips/pills - must be LIGHTER than badge-warm for clear selection */
+  --chip-selected-bg: var(--color-neutral-600);
+  --chip-selected-text: var(--color-neutral-100);
+  --chip-selected-ring: var(--color-neutral-400);
+
+  /* Selected button/option - neutral, orange reserved for CTAs */
+  --option-selected-bg: color-mix(in srgb, var(--color-neutral-700) 60%, transparent);
+  --option-selected-text: var(--color-neutral-200);
+  --option-selected-border: var(--color-neutral-500);
+
+  /* Goal indicators - subtle neutral */
+  --goal-indicator-bg: color-mix(in srgb, var(--color-neutral-600) 50%, transparent);
+  --goal-indicator-text: var(--color-neutral-300);
+
+  /* Avatar placeholder */
+  --avatar-placeholder-bg: var(--color-neutral-600);
+
+  /* Section icon decorations (categorical) */
+  --section-icon-goals-bg: color-mix(in srgb, var(--color-purple-900) 30%, transparent);
+  --section-icon-goals-text: var(--color-purple-400);
+  --section-icon-newsletter-bg: color-mix(in srgb, var(--color-warm-900) 30%, transparent);
+  --section-icon-reading-bg: color-mix(in srgb, var(--color-blue-900) 30%, transparent);
+  --section-icon-reading-text: var(--color-blue-400);
+  --section-icon-appearance-bg: color-mix(in srgb, var(--color-indigo-900) 30%, transparent);
+  --section-icon-appearance-text: var(--color-indigo-400);
+
+  /* Info/prompt sections (purple tint) */
+  --prompt-bg: color-mix(in srgb, var(--color-purple-900) 20%, transparent);
+  --prompt-border: var(--color-purple-800);
+  --prompt-text: var(--color-purple-300);
+  --prompt-button-bg: var(--color-purple-800);
+  --prompt-button-text: var(--color-purple-300);
+
+  /* Status tokens - WCAG AA compliant for dark mode */
+  --status-error-bg: var(--color-error-900);
+  /* error-200 (#fecaca) on error-900 provides ~11:1 ✓ */
+  --status-error-text: var(--color-error-200);
+  --status-error-border: var(--color-error-600);
+  --status-error-hover-bg: var(--color-error-800);
+  --status-error-hover-border: var(--color-error-500);
+  --status-error-active-bg: var(--color-error-700);
+  --status-info-bg: color-mix(in srgb, var(--color-blue-900) 50%, transparent);
+  /* blue-200 on blue-900 provides ~10:1 ✓ */
+  --status-info-text: var(--color-blue-200);
+  --status-info-border: var(--color-blue-500);
+  --status-warning-bg: var(--color-warning-900);
+  /* warning-200 (#fef08a) on warning-900 provides ~12:1 ✓ */
+  --status-warning-text: var(--color-warning-200);
+  --status-warning-border: var(--color-warning-600);
+  --status-success-bg: var(--color-success-900);
+  /* success-200 (#bbf7d0) on success-900 provides ~11:1 ✓ */
+  --status-success-text: var(--color-success-200);
+  --status-success-border: var(--color-success-600);
+
+  /* Dark mode shadows - increased opacity for better visibility */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.35);
+  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-card-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-dropdown: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.45);
+  --shadow-popover: var(--shadow-dropdown);
+  --shadow-modal: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  --shadow-tooltip: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-toast: var(--shadow-dropdown);
+  --shadow-input-focus: 0 0 0 3px color-mix(in srgb, var(--color-primary-400) 30%, transparent);
+
+  /* Border hover tokens for dark mode */
+  --border-default-hover: var(--color-neutral-500);
+  --border-warm-hover: color-mix(in srgb, var(--color-warm-400) 70%, var(--color-neutral-500));
+}
+
+/* ============================================
+   READING MODE ENHANCEMENT CLASSES (v1.22.0)
+   Component-level styles for immersive reading
+   ============================================ */
+
+/**
+ * Reading Container - Parchment gradient background
+ * Creates the "manuscript feel" for reading mode
+ */
+.reading-container {
+  background: linear-gradient(180deg,
+    var(--reading-surface-base) 0%,
+    var(--reading-surface-mid) 50%,
+    var(--reading-surface-end) 100%
+  );
+  position: relative;
+  min-height: 100%;
+}
+
+/* Subtle vignette overlay for depth */
+.reading-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 0%, rgba(139, 105, 20, 0.015) 100%);
+  pointer-events: none;
+}
+
+/* Dark mode: Warm charcoal gradient with diya glow */
+.dark .reading-container {
+  background: linear-gradient(180deg,
+    var(--reading-surface-base) 0%,
+    var(--reading-surface-mid) 50%,
+    var(--reading-surface-end) 100%
+  );
+}
+
+/* Diya glow from top - subtle warm radiance */
+.dark .reading-container::before {
+  background: radial-gradient(ellipse at center top, rgba(198, 93, 26, 0.03) 0%, transparent 70%);
+}
+
+/**
+ * Verse Ornament - Decorative verse number badge
+ * Styled to evoke manuscript margins and illuminated texts
+ */
+.verse-ornament {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem 1.25rem;
+  font-family: var(--font-family-display);
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  border-radius: 2rem;
+  background: linear-gradient(135deg, var(--color-warm-50) 0%, var(--color-warm-100) 100%);
+  color: var(--color-warm-800);
+  border: 1px solid var(--color-warm-200);
+  box-shadow: 0 2px 8px rgba(139, 105, 20, 0.08);
+}
+
+.dark .verse-ornament {
+  background: linear-gradient(135deg, var(--color-neutral-800) 0%, var(--color-neutral-700) 100%);
+  color: var(--color-warm-300);
+  border-color: var(--color-neutral-600);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/**
+ * Reading Separator - Traditional danda marks with gradient lines
+ * ॥ between content sections
+ */
+.reading-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: 0.5rem 0;
+}
+
+.reading-separator-line {
+  height: 1px;
+  width: 3rem;
+  background: linear-gradient(90deg, transparent, var(--color-warm-300), transparent);
+}
+
+.reading-separator-symbol {
+  font-size: 0.9rem;
+  color: var(--color-warm-500);
+  font-family: var(--font-family-sanskrit);
+}
+
+.dark .reading-separator-line {
+  background: linear-gradient(90deg, transparent, var(--color-neutral-600), transparent);
+}
+
+.dark .reading-separator-symbol {
+  color: var(--color-warm-400);
+}
+
+/**
+ * Reading Sanskrit - Enhanced Sanskrit text for reading mode
+ * Golden glow in dark mode (diya-lit effect)
+ */
+.reading-sanskrit {
+  font-family: var(--font-family-sanskrit);
+  text-align: center;
+  color: var(--text-sanskrit);
+  line-height: 2.2;
+}
+
+/* Golden glow effect in dark mode */
+.dark .reading-sanskrit {
+  color: var(--color-warm-400);
+  text-shadow: 0 0 40px rgba(230, 184, 48, 0.08);
+}
+
+/**
+ * Pada (quarter-verse) separation for Sanskrit
+ * Each line/pada on its own line for contemplative reading
+ */
+.reading-pada {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.reading-pada:last-child {
+  margin-bottom: 0;
+}

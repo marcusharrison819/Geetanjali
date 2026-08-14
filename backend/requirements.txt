@@ -1,0 +1,100 @@
+# Geetanjali Backend Dependencies
+
+# Web Framework
+fastapi==0.135.2
+uvicorn[standard]==0.49.0
+python-multipart==0.0.32
+
+# Database
+sqlalchemy==2.0.51
+alembic==1.18.4
+psycopg2-binary==2.9.12  # PostgreSQL driver
+
+# Pydantic (included with FastAPI but pinned for clarity)
+pydantic==2.13.4
+pydantic-settings==2.14.2
+email-validator==2.3.0  # Required for pydantic EmailStr validation
+
+# Vector Database
+#
+# ACCEPTED RISK -- GHSA-f4j7-r4q5-qw2c (critical, pre-auth code injection).
+# Vulnerable range is >= 1.0.0, <= 1.5.9 and 1.5.9 is the latest release on PyPI,
+# so every published version is affected and there is no upgrade path. Dependabot
+# will keep raising this; the pin is deliberate, not neglect.
+#
+# Why it is accepted: the Chroma server is not reachable from outside the compose
+# network. docker-compose.yml declares no `ports:` for the chromadb service, and the
+# 8000:8000 publish in override/test/minimal belongs to `backend`, not chroma. The
+# container also runs non-root with cap_drop: ALL and no-new-privileges. Reaching the
+# vulnerable HTTP API therefore requires already being inside geetanjali-network --
+# post-compromise lateral movement, not an internet-facing RCE.
+#
+# Open mitigation (not yet applied): the vulnerability is *pre-authentication*, so
+# enabling Chroma token auth removes its precondition. Needs CHROMA_SERVER_AUTHN_PROVIDER
+# + CHROMA_SERVER_AUTHN_CREDENTIALS on the server and chroma_client_auth_provider on the
+# client, plus a managed secret -- a functional change requiring a full-stack test.
+#
+# Re-check for a patched release before assuming this is still the best available state.
+chromadb==1.5.9
+
+# Embeddings
+sentence-transformers==5.5.1
+
+# LLM Clients
+httpx>=0.27.0  # For Ollama API calls (chromadb 1.3.5 requires >=0.27.0)
+anthropic==0.109.2  # Anthropic Claude API
+google-genai>=1.0.0  # Google Gemini API
+
+# Testing
+pytest==9.1.0
+pytest-asyncio>=1.0.0  # pytest 9.x requires pytest-asyncio 1.x
+pytest-cov==7.1.0
+
+# Code Quality
+ruff==0.15.17  # Fast linter and formatter (replaces flake8+black)
+mypy==1.19.1
+types-requests==2.33.0.20260518  # Type stubs for requests
+types-PyYAML==6.0.12.20250915  # Type stubs for PyYAML
+types-redis==4.6.0.20241004  # Type stubs for redis
+
+# Authentication
+python-jose[cryptography]==3.5.0  # JWT tokens
+passlib[bcrypt]==1.7.4  # Password hashing
+bcrypt==4.3.0  # pinned due to passlib 1.7.4 incompatibility with bcrypt 5.0.0
+
+# Utilities
+python-dotenv==1.2.2
+tenacity==9.1.4  # Retry logic for robustness
+slowapi==0.1.10  # Rate limiting
+better-profanity==0.7.0  # Profanity detection with obfuscation handling
+
+# Redis Cache & Task Queue
+redis==7.3.0
+rq==2.9.1  # Redis Queue for background tasks
+
+# Data Ingestion
+beautifulsoup4==4.15.0  # HTML parsing
+lxml==6.1.1  # XML/HTML parser
+pyyaml==6.0.3  # YAML config loading
+indic-transliteration==2.3.82  # Sanskrit IAST transliteration
+requests==2.34.2  # HTTP client for fetching
+urllib3>=2.5.0  # CVE-2025-50181, CVE-2025-50182 fix
+
+# Email
+resend>=2.5.0  # Transactional email service
+
+# Monitoring
+sentry-sdk[fastapi]==2.62.0  # Error tracking and performance monitoring
+prometheus-fastapi-instrumentator==7.1.0  # FastAPI metrics instrumentation
+prometheus-client==0.25.0  # Prometheus client library
+
+# Scheduling
+apscheduler==3.11.2  # Background task scheduler for metrics collection
+
+# Audio Processing
+mutagen==1.47.0  # Audio file metadata (duration) for TTS QA
+edge-tts==7.2.8  # Microsoft Edge TTS for English narration
+
+
+# Type stubs
+typing_extensions>=4.0.0

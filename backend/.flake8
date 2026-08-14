@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 150
+max-complexity = 15
+extend-ignore = E203, W503, E402
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    build,
+    dist,
+    *.egg-info,
+    alembic/versions/*
+per-file-ignores =
+    scripts/*:E402,F541
+    services/mock_llm.py:E501
+    services/prompts.py:E501
+    services/email.py:E501
+    config.py:C901

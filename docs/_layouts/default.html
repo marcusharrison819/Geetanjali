@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en-US' }}">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+{% seo %}
+
+    <!-- Google Fonts: Match main app typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
+    {% include head-custom.html %}
+  </head>
+  <body>
+    <!-- Theme initialization (runs immediately to prevent flash) -->
+    <script>
+      (function() {
+        const STORAGE_KEY = 'geetanjali-docs:theme';
+        const THEMES = ['light', 'dark', 'system'];
+        const ICONS = {
+          light: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z',
+          dark: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z',
+          system: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
+        };
+        const LABELS = { light: 'Light mode', dark: 'Dark mode', system: 'System theme' };
+
+        function getStoredTheme() {
+          try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return THEMES.includes(stored) ? stored : 'system';
+          } catch { return 'system'; }
+        }
+
+        function applyTheme(theme) {
+          const root = document.documentElement;
+          root.classList.remove('light', 'dark');
+          if (theme !== 'system') {
+            root.classList.add(theme);
+          }
+        }
+
+        function updateIcon(theme) {
+          const path = document.querySelector('#theme-toggle path');
+          const btn = document.getElementById('theme-toggle');
+          if (path) path.setAttribute('d', ICONS[theme]);
+          if (btn) {
+            btn.setAttribute('aria-label', LABELS[theme] + '. Click to change.');
+            btn.setAttribute('title', LABELS[theme]);
+          }
+        }
+
+        function cycleTheme() {
+          const current = getStoredTheme();
+          const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
+          try { localStorage.setItem(STORAGE_KEY, next); } catch {}
+          applyTheme(next);
+          updateIcon(next);
+        }
+
+        // Apply theme immediately
+        const theme = getStoredTheme();
+        applyTheme(theme);
+
+        // Setup toggle after DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+          updateIcon(theme);
+          const btn = document.getElementById('theme-toggle');
+          if (btn) btn.addEventListener('click', cycleTheme);
+        });
+      })();
+    </script>
+
+    <nav class="site-nav" role="banner">
+      <div class="nav-content">
+        <a href="{{ '/' | relative_url }}" class="brand">
+          <img src="{{ '/logo.svg' | relative_url }}" alt="" class="brand-logo">
+          <span class="brand-name">Geetanjali</span>
+          <span class="brand-docs">Docs</span>
+        </a>
+        <div class="nav-links">
+          <a href="https://geetanjaliapp.com" class="nav-link">App</a>
+          {% if site.github.is_project_page %}
+            <a href="{{ site.github.repository_url }}" class="nav-link">GitHub</a>
+          {% endif %}
+          <!-- Theme Toggle -->
+          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
+            <svg class="theme-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main id="content" class="main-content" role="main">
+      {{ content }}
+
+      <footer class="site-footer">
+        <p>
+          <a href="https://geetanjaliapp.com">Geetanjali</a> ·
+          Ethical guidance from the Bhagavad Gita
+        </p>
+      </footer>
+    </main>
+
+    <!-- Mermaid.js for diagram rendering with dark mode support -->
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+      // Detect if dark mode is active
+      function isDarkMode() {
+        const root = document.documentElement;
+        if (root.classList.contains('dark')) return true;
+        if (root.classList.contains('light')) return false;
+        // System preference fallback
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      // Get Mermaid theme based on current mode
+      function getMermaidTheme() {
+        return isDarkMode() ? 'dark' : 'neutral';
+      }
+
+      // Store original diagram sources for re-rendering
+      const diagramSources = [];
+
+      // Initialize Mermaid with current theme
+      function initMermaid() {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: getMermaidTheme(),
+          securityLevel: 'loose',
+          flowchart: {
+            useMaxWidth: true,
+            htmlLabels: true
+          },
+          themeVariables: isDarkMode() ? {
+            primaryColor: '#4A4540',
+            primaryTextColor: '#E8E4E0',
+            primaryBorderColor: '#5D5550',
+            lineColor: '#8A8580',
+            secondaryColor: '#252220',
+            tertiaryColor: '#1A1614',
+            background: '#1A1614',
+            mainBkg: '#252220',
+            nodeBorder: '#5D5550',
+            clusterBkg: '#252220',
+            clusterBorder: '#4A4540',
+            titleColor: '#E8E4E0',
+            edgeLabelBackground: '#252220'
+          } : {}
+        });
+      }
+
+      // Find all mermaid code blocks and convert them
+      document.querySelectorAll('pre code.language-mermaid').forEach((block, index) => {
+        const pre = block.parentElement;
+        const container = document.createElement('div');
+        container.className = 'mermaid';
+        container.id = `mermaid-${index}`;
+        const source = block.textContent;
+        diagramSources.push({ id: container.id, source });
+        container.textContent = source;
+        pre.parentNode.replaceChild(container, pre);
+      });
+
+      // Initial render
+      initMermaid();
+      await mermaid.run();
+
+      // Re-render on theme change
+      const observer = new MutationObserver(async (mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.attributeName === 'class') {
+            // Reset and re-render all diagrams with new theme
+            initMermaid();
+            for (const { id, source } of diagramSources) {
+              const el = document.getElementById(id);
+              if (el) {
+                el.removeAttribute('data-processed');
+                el.innerHTML = source;
+              }
+            }
+            await mermaid.run();
+            break;
+          }
+        }
+      });
+
+      observer.observe(document.documentElement, { attributes: true });
+    </script>
+
+    <style>
+      /*
+       * Geetanjali Docs - Design System
+       * Aligned with main app (v1.22.0 Sacred Saffron)
+       *
+       * Typography: Spectral (headings), Source Sans 3 (body)
+       * Colors: Sacred Saffron (primary), Turmeric Gold (warm surfaces)
+       */
+
+      /* ============================================
+         CSS Variables - Sacred Saffron Palette
+         ============================================ */
+      :root {
+        /* Neutral scale (warm-tinted) */
+        --gray-50: #FAFAF9;
+        --gray-100: #F5F5F4;
+        --gray-200: #E7E5E4;
+        --gray-300: #D6D3D1;
+        --gray-400: #A8A29E;
+        --gray-500: #78716C;
+        --gray-600: #57534E;
+        --gray-700: #44403C;
+        --gray-800: #292524;
+        --gray-900: #1C1917;
+
+        /* Turmeric Gold - warm surfaces */
+        --amber-50: #FFFDF5;
+        --amber-100: #FFF8E1;
+        --amber-200: #FFECB3;
+        --amber-400: #E6B830;
+        --amber-600: #B08914;
+        --amber-700: #8B6914;
+        --amber-800: #5D4710;
+        --amber-900: #3D2E0A;
+
+        /* Sacred Saffron - primary interactive */
+        --orange-50: #FEF5F0;
+        --orange-100: #FDEBE0;
+        --orange-500: #C65D1A;
+        --orange-600: #A94E12;
+        --orange-700: #8B3E0E;
+        --orange-800: #6D2F0A;
+
+        /* Semantic colors */
+        --bg-primary: var(--gray-50);
+        --bg-surface: white;
+        --bg-surface-elevated: white;
+        --text-primary: var(--gray-900);
+        --text-secondary: var(--gray-700);
+        --text-muted: var(--gray-500);
+        --border-default: var(--gray-200);
+        --border-accent: var(--amber-200);
+        --code-bg: #1A1614;
+        --code-text: #E8E4E0;
+        --inline-code-bg: var(--amber-100);
+        --inline-code-text: var(--amber-900);
+        --blockquote-bg: var(--orange-50);
+        --table-header-bg: var(--amber-50);
+        --table-row-alt: var(--gray-50);
+        --table-row-hover: var(--amber-50);
+        --mermaid-bg: white;
+        --ascii-bg: var(--amber-50);
+      }
+
+      /* Dark mode variables - Warm Charcoal */
+      :root.dark {
+        --bg-primary: #111310;
+        --bg-surface: #1A1614;
+        --bg-surface-elevated: #252220;
+        --text-primary: #E8E4E0;
+        --text-secondary: #C8C4C0;
+        --text-muted: #8A8580;
+        --border-default: #3D3835;
+        --border-accent: #4A4540;
+        --code-bg: #0F0D0C;
+        --code-text: #E8E4E0;
+        --inline-code-bg: rgba(230, 184, 48, 0.2);
+        --inline-code-text: #E6B830;
+        --blockquote-bg: rgba(169, 78, 18, 0.15);
+        --table-header-bg: rgba(230, 184, 48, 0.1);
+        --table-row-alt: #1A1614;
+        --table-row-hover: rgba(230, 184, 48, 0.1);
+        --mermaid-bg: #1A1614;
+        --ascii-bg: #1A1614;
+      }
+
+      /* System preference fallback (when theme is 'system') */
+      @media (prefers-color-scheme: dark) {
+        :root:not(.light):not(.dark) {
+          --bg-primary: #111310;
+          --bg-surface: #1A1614;
+          --bg-surface-elevated: #252220;
+          --text-primary: #E8E4E0;
+          --text-secondary: #C8C4C0;
+          --text-muted: #8A8580;
+          --border-default: #3D3835;
+          --border-accent: #4A4540;
+          --code-bg: #0F0D0C;
+          --code-text: #E8E4E0;
+          --inline-code-bg: rgba(230, 184, 48, 0.2);
+          --inline-code-text: #E6B830;
+          --blockquote-bg: rgba(169, 78, 18, 0.15);
+          --table-header-bg: rgba(230, 184, 48, 0.1);
+          --table-row-alt: #1A1614;
+          --table-row-hover: rgba(230, 184, 48, 0.1);
+          --mermaid-bg: #1A1614;
+          --ascii-bg: #1A1614;
+        }
+      }
+
+      /* ============================================
+         Base Typography
+         ============================================ */
+      body {
+        font-family: 'Source Sans 3', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: var(--text-primary);
+        background-color: var(--bg-primary);
+        line-height: 1.6;
+      }
+
+      /* ============================================
+         Navbar - Matches main app
+         ============================================ */
+      .site-nav {
+        background: var(--bg-surface);
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        border-bottom: 1px solid var(--border-default);
+        height: 3.5rem;
+        position: sticky;
+        top: 0;
+        z-index: 40;
+      }
+      @media (min-width: 640px) {
+        .site-nav {
+          height: 4rem;
+        }
+      }
+      .nav-content {
+        max-width: 80rem;
+        margin: 0 auto;
+        padding: 0 1rem;
+        height: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      @media (min-width: 640px) {
+        .nav-content {
+          padding: 0 1.5rem;
+        }
+      }
+
+      /* Brand: Logo + Name + "Docs" badge */
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        transition: opacity 0.15s;
+      }
+      @media (min-width: 640px) {
+        .brand {
+          gap: 0.75rem;
+        }
+      }
+      .brand:hover {
+        opacity: 0.8;
+      }
+      .brand-logo {
+        height: 2rem;
+        width: 2rem;
+      }
+      @media (min-width: 640px) {
+        .brand-logo {
+          height: 2.5rem;
+          width: 2.5rem;
+        }
+      }
+      .brand-name {
+        font-family: 'Spectral', Georgia, serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--orange-600);
+      }
+      @media (min-width: 640px) {
+        .brand-name {
+          font-size: 1.5rem;
+        }
+      }
+      .brand-docs {
+        font-family: 'Source Sans 3', system-ui, sans-serif;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        background: var(--bg-surface-elevated);
+        padding: 0.125rem 0.5rem;
+        border-radius: 9999px;
+        margin-left: 0.25rem;
+      }
+
+      /* Nav links */
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        text-decoration: none;
+        border-radius: 0.375rem;
+        transition: all 0.15s;
+      }
+      .nav-link:hover {
+        color: var(--orange-600);
+        background-color: var(--blockquote-bg);
+      }
+
+      /* Theme Toggle Button */
+      .theme-toggle {
+        padding: 0.5rem;
+        border: none;
+        background: transparent;
+        border-radius: 0.5rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .theme-toggle:hover {
+        color: var(--orange-600);
+        background-color: var(--blockquote-bg);
+      }
+      .theme-toggle:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--orange-500);
+      }
+      .theme-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+      /* ============================================
+         Main Content
+         ============================================ */
+      .main-content {
+        max-width: 52rem;
+        margin: 0 auto;
+        padding: 2rem 1rem 3rem;
+      }
+      @media (min-width: 640px) {
+        .main-content {
+          padding: 2.5rem 1.5rem 4rem;
+        }
+      }
+      @media (min-width: 1024px) {
+        .main-content {
+          padding: 3rem 2rem 5rem;
+        }
+      }
+
+      /* ============================================
+         Headings - Spectral serif
+         ============================================ */
+      .main-content h1 {
+        font-family: 'Spectral', Georgia, serif;
+        font-size: 2rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        line-height: 1.2;
+      }
+      @media (min-width: 640px) {
+        .main-content h1 {
+          font-size: 2.5rem;
+        }
+      }
+
+      .main-content h2 {
+        font-family: 'Spectral', Georgia, serif;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-top: 2.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-accent);
+      }
+      @media (min-width: 640px) {
+        .main-content h2 {
+          font-size: 1.75rem;
+        }
+      }
+
+      .main-content h3 {
+        font-family: 'Spectral', Georgia, serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .main-content h4 {
+        font-family: 'Source Sans 3', system-ui, sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      /* ============================================
+         Paragraphs and Lists
+         ============================================ */
+      .main-content p {
+        margin-bottom: 1rem;
+        color: var(--text-secondary);
+      }
+
+      .main-content ul, .main-content ol {
+        margin-bottom: 1rem;
+        padding-left: 1.5rem;
+        color: var(--text-secondary);
+      }
+
+      .main-content li {
+        margin-bottom: 0.5rem;
+      }
+
+      .main-content li > ul, .main-content li > ol {
+        margin-top: 0.5rem;
+        margin-bottom: 0;
+      }
+
+      /* ============================================
+         Links - Orange primary
+         ============================================ */
+      .main-content a {
+        color: var(--orange-600);
+        text-decoration: none;
+        transition: color 0.15s;
+      }
+      .main-content a:hover {
+        color: var(--orange-700);
+        text-decoration: underline;
+      }
+
+      /* Strong links (bold) in lists */
+      .main-content li > strong > a,
+      .main-content li > a > strong {
+        font-weight: 600;
+      }
+
+      /* ============================================
+         Code Blocks
+         ============================================ */
+      .main-content pre {
+        background-color: var(--code-bg);
+        color: var(--code-text);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        overflow-x: auto;
+        margin: 1.5rem 0;
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+
+      .main-content code {
+        font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+        font-size: 0.875em;
+      }
+
+      .main-content :not(pre) > code {
+        background-color: var(--inline-code-bg);
+        color: var(--inline-code-text);
+        padding: 0.125rem 0.375rem;
+        border-radius: 0.25rem;
+      }
+
+      .main-content pre code {
+        background: transparent;
+        padding: 0;
+        color: inherit;
+      }
+
+      /* ============================================
+         Tables - Warm header
+         ============================================ */
+      .main-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1.5rem 0;
+        font-size: 0.9375rem;
+      }
+      .main-content table th {
+        background-color: var(--table-header-bg);
+        font-weight: 600;
+        text-align: left;
+        color: var(--text-primary);
+      }
+      .main-content table th,
+      .main-content table td {
+        border: 1px solid var(--border-accent);
+        padding: 0.75rem;
+      }
+      .main-content table td {
+        color: var(--text-secondary);
+      }
+      .main-content table tr:nth-child(even) {
+        background-color: var(--table-row-alt);
+      }
+      .main-content table tr:hover {
+        background-color: var(--table-row-hover);
+      }
+
+      /* ============================================
+         Blockquotes - Orange accent
+         ============================================ */
+      .main-content blockquote {
+        border-left: 4px solid var(--orange-500);
+        background-color: var(--blockquote-bg);
+        padding: 1rem 1.5rem;
+        margin: 1.5rem 0;
+        color: var(--text-secondary);
+        border-radius: 0 0.5rem 0.5rem 0;
+      }
+      .main-content blockquote p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* ============================================
+         Horizontal Rules
+         ============================================ */
+      .main-content hr {
+        border: none;
+        border-top: 1px solid var(--border-accent);
+        margin: 2.5rem 0;
+      }
+
+      /* ============================================
+         Mermaid Diagrams
+         ============================================ */
+      .mermaid {
+        text-align: center;
+        margin: 2rem 0;
+        background: var(--mermaid-bg);
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--border-accent);
+      }
+      .mermaid svg {
+        max-width: 100%;
+        height: auto;
+      }
+
+      /* ============================================
+         ASCII Art Blocks (pre without syntax)
+         ============================================ */
+      .main-content pre:not([class*="language-"]) {
+        background-color: var(--ascii-bg);
+        color: var(--text-primary);
+        border: 1px solid var(--border-accent);
+      }
+
+      /* ============================================
+         Footer
+         ============================================ */
+      .site-footer {
+        margin-top: 4rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border-accent);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+      }
+      .site-footer a {
+        color: var(--orange-600);
+        text-decoration: none;
+      }
+      .site-footer a:hover {
+        text-decoration: underline;
+      }
+
+      /* ============================================
+         First Paragraph After H1 (Lead text)
+         ============================================ */
+      .main-content h1 + p {
+        font-size: 1.125rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+      }
+      @media (min-width: 640px) {
+        .main-content h1 + p {
+          font-size: 1.25rem;
+        }
+      }
+
+      /* ============================================
+         Images
+         ============================================ */
+      .main-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+      }
+
+      /* ============================================
+         Print Styles
+         ============================================ */
+      @media print {
+        .site-nav, .site-footer {
+          display: none;
+        }
+        .main-content {
+          max-width: 100%;
+          padding: 0;
+        }
+        .main-content pre {
+          background: var(--gray-100) !important;
+          color: black !important;
+        }
+      }
+    </style>
+  </body>
+</html>

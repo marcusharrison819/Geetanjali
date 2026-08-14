@@ -1,0 +1,299 @@
+/**
+ * PRIMITIVES.CSS - Tier 1: Raw Design Scales
+ *
+ * These are the user-customizable primitives that form the foundation
+ * of the theming system. When users customize their theme, these values change.
+ *
+ * Contents:
+ * - Color scales (5 scales × 10 shades = 50 tokens)
+ * - Typography (font families, sizes, weights, line heights)
+ * - Spacing scale
+ * - Border radius scale
+ * - Shadow scale
+ * - Motion (durations, easing)
+ *
+ * References Tailwind v4's built-in CSS variables where applicable.
+ * Usage: These should ONLY be referenced by semantic.css, never directly in components.
+ */
+
+:root {
+  /* ============================================
+     PRIMARY SCALE - Sacred Saffron (केसरी)
+     Usage: Buttons, links, CTAs, primary actions
+     v1.22.0: Replaced generic Tailwind orange with
+     culturally-rooted Sacred Saffron palette
+     ============================================ */
+  --color-primary-50: #FEF5F0;
+  --color-primary-100: #FDEBE0;
+  --color-primary-200: #F9D4BC;
+  --color-primary-300: #F4A460;
+  --color-primary-400: #E07B3C;
+  --color-primary-500: #C65D1A;   /* Sacred Saffron */
+  --color-primary-600: #A94E12;
+  --color-primary-700: #8B3E0E;
+  --color-primary-800: #6D2F0A;
+  --color-primary-900: #4A1F06;
+  --color-primary-950: #2D1304;
+
+  /* ============================================
+     WARM SCALE - Turmeric Gold (हल्दी)
+     Usage: Cards, warm surfaces, highlights
+     v1.22.0: Rich gold tones evoking auspiciousness
+     and purification rituals
+     ============================================ */
+  --color-warm-50: #FFFDF5;
+  --color-warm-100: #FFF8E1;
+  --color-warm-200: #FFECB3;
+  --color-warm-300: #FFD54F;
+  --color-warm-400: #E6B830;
+  --color-warm-500: #D4A017;   /* Turmeric Gold */
+  --color-warm-600: #B08914;
+  --color-warm-700: #8B6914;
+  --color-warm-800: #5D4710;
+  --color-warm-900: #3D2E0A;
+  --color-warm-950: #1F1705;
+
+  /* ============================================
+     NEUTRAL SCALE (Gray by default)
+     Usage: Text, borders, backgrounds, UI chrome
+     v1.22.0: Added 950 shade for deeper darks
+     ============================================ */
+  --color-neutral-50: var(--color-gray-50);
+  --color-neutral-100: var(--color-gray-100);
+  --color-neutral-200: var(--color-gray-200);
+  --color-neutral-300: var(--color-gray-300);
+  --color-neutral-400: var(--color-gray-400);
+  --color-neutral-500: var(--color-gray-500);
+  --color-neutral-600: var(--color-gray-600);
+  --color-neutral-700: var(--color-gray-700);
+  --color-neutral-800: var(--color-gray-800);
+  --color-neutral-900: var(--color-gray-900);
+  --color-neutral-950: var(--color-gray-950);
+
+  /* ============================================
+     ACCENT SCALE - Turmeric Gold (matches warm)
+     Usage: Sanskrit text, decorative elements, sacred highlights
+     v1.22.0: Mirrors warm scale; can be customized independently
+     ============================================ */
+  --color-accent-50: #FFFDF5;
+  --color-accent-100: #FFF8E1;
+  --color-accent-200: #FFECB3;
+  --color-accent-300: #FFD54F;
+  --color-accent-400: #E6B830;
+  --color-accent-500: #D4A017;
+  --color-accent-600: #B08914;
+  --color-accent-700: #8B6914;
+  --color-accent-800: #5D4710;
+  --color-accent-900: #3D2E0A;
+  --color-accent-950: #1F1705;
+
+  /* ============================================
+     READING SCALE - Warm Parchment
+     Usage: Reading mode backgrounds, focused reading surfaces
+     v1.22.0: Warm cream tones like aged manuscripts
+     ============================================ */
+  --color-reading-50: #FDF8F3;
+  --color-reading-100: #FAF4EC;
+  --color-reading-200: #F7EFE5;
+  --color-reading-300: #EDE4D8;
+  --color-reading-400: #DDD2C3;
+  --color-reading-500: #C4B8A8;
+  --color-reading-600: #A99D8D;
+  --color-reading-700: #8A7F70;
+  --color-reading-800: #6B6256;
+  --color-reading-900: #4D463D;
+  --color-reading-950: #2A2521;
+
+  /* ============================================
+     STATUS: ERROR SCALE (Red by default)
+     Usage: Error states, validation failures, destructive actions
+     v1.22.0: Added 950 shade
+     ============================================ */
+  --color-error-50: var(--color-red-50);
+  --color-error-100: var(--color-red-100);
+  --color-error-200: var(--color-red-200);
+  --color-error-300: var(--color-red-300);
+  --color-error-400: var(--color-red-400);
+  --color-error-500: var(--color-red-500);
+  --color-error-600: var(--color-red-600);
+  --color-error-700: var(--color-red-700);
+  --color-error-800: var(--color-red-800);
+  --color-error-900: var(--color-red-900);
+  --color-error-950: var(--color-red-950);
+
+  /* ============================================
+     STATUS: SUCCESS SCALE (Green by default)
+     Usage: Success states, confirmations, positive feedback
+     v1.22.0: Added 950 shade
+     ============================================ */
+  --color-success-50: var(--color-green-50);
+  --color-success-100: var(--color-green-100);
+  --color-success-200: var(--color-green-200);
+  --color-success-300: var(--color-green-300);
+  --color-success-400: var(--color-green-400);
+  --color-success-500: var(--color-green-500);
+  --color-success-600: var(--color-green-600);
+  --color-success-700: var(--color-green-700);
+  --color-success-800: var(--color-green-800);
+  --color-success-900: var(--color-green-900);
+  --color-success-950: var(--color-green-950);
+
+  /* ============================================
+     STATUS: WARNING SCALE (Yellow by default)
+     Usage: Warning states, caution indicators
+     v1.22.0: Added 950 shade
+     ============================================ */
+  --color-warning-50: var(--color-yellow-50);
+  --color-warning-100: var(--color-yellow-100);
+  --color-warning-200: var(--color-yellow-200);
+  --color-warning-300: var(--color-yellow-300);
+  --color-warning-400: var(--color-yellow-400);
+  --color-warning-500: var(--color-yellow-500);
+  --color-warning-600: var(--color-yellow-600);
+  --color-warning-700: var(--color-yellow-700);
+  --color-warning-800: var(--color-yellow-800);
+  --color-warning-900: var(--color-yellow-900);
+  --color-warning-950: var(--color-yellow-950);
+
+  /* ============================================
+     CONTRAST COLORS (Theme-aware)
+     Usage: Text on colored backgrounds, inverted surfaces
+     These are overridable by themes for proper contrast
+     ============================================ */
+
+  /* Text color for content ON primary-colored backgrounds (buttons, badges) */
+  --color-on-primary: #ffffff;
+  --color-on-primary-muted: color-mix(in srgb, #ffffff 80%, transparent);
+
+  /* Text color for content ON warm-colored backgrounds */
+  --color-on-warm: var(--color-warm-900);
+
+  /* Pure surface colors (for elevated surfaces, focus rings) */
+  --color-surface-pure: #ffffff;
+  --color-surface-pure-dark: var(--color-neutral-900);
+
+  /* ============================================
+     TYPOGRAPHY: FONT FAMILIES
+     Usage: Customize fonts per theme
+     ============================================ */
+  --font-family-display: 'Spectral', Georgia, serif;
+  --font-family-body: 'Source Sans 3', system-ui, sans-serif;
+  --font-family-sanskrit: 'Noto Serif Devanagari', serif;
+  --font-family-mono: ui-monospace, 'Fira Code', Consolas, monospace;
+
+  /* ============================================
+     TYPOGRAPHY: FONT SIZES
+     Modular scale (1.25 ratio)
+     ============================================ */
+  --font-size-xs: 0.75rem;     /* 12px */
+  --font-size-sm: 0.875rem;    /* 14px */
+  --font-size-base: 1rem;      /* 16px */
+  --font-size-lg: 1.125rem;    /* 18px */
+  --font-size-xl: 1.25rem;     /* 20px */
+  --font-size-2xl: 1.5rem;     /* 24px */
+  --font-size-3xl: 1.875rem;   /* 30px */
+  --font-size-4xl: 2.25rem;    /* 36px */
+  --font-size-5xl: 3rem;       /* 48px */
+
+  /* ============================================
+     TYPOGRAPHY: FONT WEIGHTS
+     ============================================ */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* ============================================
+     TYPOGRAPHY: LINE HEIGHTS
+     ============================================ */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* ============================================
+     TYPOGRAPHY: LETTER SPACING
+     ============================================ */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  /* ============================================
+     SPACING SCALE
+     Base unit: 4px (0.25rem)
+     ============================================ */
+  --spacing-px: 1px;
+  --spacing-0: 0;
+  --spacing-0-5: 0.125rem;  /* 2px */
+  --spacing-1: 0.25rem;     /* 4px */
+  --spacing-1-5: 0.375rem;  /* 6px */
+  --spacing-2: 0.5rem;      /* 8px */
+  --spacing-2-5: 0.625rem;  /* 10px */
+  --spacing-3: 0.75rem;     /* 12px */
+  --spacing-3-5: 0.875rem;  /* 14px */
+  --spacing-4: 1rem;        /* 16px */
+  --spacing-5: 1.25rem;     /* 20px */
+  --spacing-6: 1.5rem;      /* 24px */
+  --spacing-7: 1.75rem;     /* 28px */
+  --spacing-8: 2rem;        /* 32px */
+  --spacing-9: 2.25rem;     /* 36px */
+  --spacing-10: 2.5rem;     /* 40px */
+  --spacing-11: 2.75rem;    /* 44px */
+  --spacing-12: 3rem;       /* 48px */
+  --spacing-14: 3.5rem;     /* 56px */
+  --spacing-16: 4rem;       /* 64px */
+  --spacing-20: 5rem;       /* 80px */
+  --spacing-24: 6rem;       /* 96px */
+
+  /* ============================================
+     BORDER RADIUS SCALE
+     ============================================ */
+  --radius-none: 0;
+  --radius-sm: 0.125rem;    /* 2px */
+  --radius-default: 0.25rem; /* 4px */
+  --radius-md: 0.375rem;    /* 6px */
+  --radius-lg: 0.5rem;      /* 8px */
+  --radius-xl: 0.75rem;     /* 12px */
+  --radius-2xl: 1rem;       /* 16px */
+  --radius-3xl: 1.5rem;     /* 24px */
+  --radius-full: 9999px;
+
+  /* ============================================
+     SHADOW SCALE
+     ============================================ */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-none: 0 0 #0000;
+
+  /* ============================================
+     MOTION: DURATIONS
+     ============================================ */
+  --duration-0: 0ms;
+  --duration-75: 75ms;
+  --duration-100: 100ms;
+  --duration-150: 150ms;
+  --duration-200: 200ms;
+  --duration-300: 300ms;
+  --duration-500: 500ms;
+  --duration-700: 700ms;
+  --duration-1000: 1000ms;
+
+  /* ============================================
+     MOTION: EASING CURVES
+     ============================================ */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}

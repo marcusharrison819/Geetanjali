@@ -1,0 +1,884 @@
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useParams, Link } from "react-router-dom";
+import { casesApi } from "../lib/api";
+import type { Case, Message, Output } from "../types";
+import {
+  Navbar,
+  ContentNotFound,
+  Footer,
+  GuidanceMarkdown,
+} from "../components";
+import { SpeakButton } from "../components/SpeakButton";
+import { groupMessagesIntoExchanges } from "../lib/messageGrouping";
+import { formatRelativeTime } from "../lib/dateUtils";
+import { formatVerseRef } from "../lib/verseLinker";
+import { truncateText, truncateForSEO } from "../lib/truncate";
+import { useSEO } from "../hooks";
+
+/**
+ * Public view of a shared consultation.
+ * Read-only, no follow-up input, no share/save actions.
+ */
+export default function PublicCaseView() {
+  const { slug } = useParams<{ slug: string }>();
+  const [caseData, setCaseData] = useState<Case | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [outputs, setOutputs] = useState<Output[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Dynamic SEO based on case data
+  useSEO({
+    title: caseData?.title
+      ? truncateText(caseData.title, 50, "")
+      : "Shared Consultation",
+    description: caseData?.description
+      ? truncateForSEO(caseData.description)
+      : "View this shared ethical consultation with guidance from the Bhagavad Gita.",
+    canonical: slug ? `/c/${slug}` : "/",
+    ogType: "article",
+  });
+
+  // Expanded state for sections
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(
+    new Set(),
+  );
+  const [showPaths, setShowPaths] = useState(true);
+  const [showSteps, setShowSteps] = useState(true);
+  const [showReflections, setShowReflections] = useState(true);
+  const [selectedOption, setSelectedOption] = useState(0);
+
+  const loadData = useCallback(async () => {
+    if (!slug) return;
+
+    try {
+      const [caseRes, messagesRes, outputsRes] = await Promise.all([
+        casesApi.getPublic(slug),
+        casesApi.getPublicMessages(slug),
+        casesApi.getPublicOutputs(slug),
+      ]);
+
+      setCaseData(caseRes);
+      setMessages(messagesRes);
+      setOutputs(outputsRes);
+
+      // Expand first output's sources by default
+      if (outputsRes.length > 0) {
+        setExpandedSources(new Set([outputsRes[0].id]));
+      }
+    } catch {
+      setError(
+        "This consultation is not publicly accessible or does not exist.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Record view once per session
+  useEffect(() => {
+    if (!slug) return;
+
+    // Only record once per session per case
+    const viewedKey = `geetanjali:viewed:${slug}`;
+    if (sessionStorage.getItem(viewedKey)) return;
+
+    casesApi
+      .recordPublicView(slug)
+      .then(() => {
+        sessionStorage.setItem(viewedKey, "true");
+      })
+      .catch(() => {
+        // Ignore errors - view tracking is non-critical
+      });
+  }, [slug]);
+
+  const toggleSources = (outputId: string) => {
+    setExpandedSources((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(outputId)) newSet.delete(outputId);
+      else newSet.add(outputId);
+      return newSet;
+    });
+  };
+
+  // Group messages into exchanges using shared utility
+  const exchanges = useMemo(
+    () => groupMessagesIntoExchanges(messages, outputs),
+    [messages, outputs],
+  );
+
+  const firstOutput = outputs.length > 0 ? outputs[outputs.length - 1] : null;
+
+  // Ref for scrolling to summary
+  const summaryRef = useRef<HTMLDivElement>(null);
+
+  const scrollToSummary = useCallback(() => {
+    summaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  // Check if summary section will be shown (for jump link visibility)
+  const hasSummary = firstOutput && (
+    firstOutput.result_json.options?.length > 0 ||
+    (typeof firstOutput.result_json.recommended_action === "object" &&
+      (firstOutput.result_json.recommended_action.steps?.length ?? 0) > 0) ||
+    firstOutput.result_json.reflection_prompts?.length > 0
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-[var(--gradient-page-from)] to-[var(--gradient-page-to)] flex flex-col overflow-x-hidden">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-[var(--text-secondary)]">
+            Loading consultation...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !caseData) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-[var(--gradient-page-from)] to-[var(--gradient-page-to)] flex flex-col overflow-x-hidden">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <ContentNotFound variant="shared" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-linear-to-br from-[var(--gradient-page-from)] to-[var(--gradient-page-to)] flex flex-col overflow-x-hidden">
+      <Navbar />
+
+      {/* Header */}
+      <div className="border-b border-[var(--border-warm-subtle)] bg-[var(--surface-warm-subtle)] backdrop-blur-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          <Link
+            to="/"
+            className="text-[var(--text-accent)] hover:text-[var(--badge-warm-text)] text-sm flex items-center gap-1"
+          >
+            ← Home
+          </Link>
+          <div className="text-xs text-[var(--text-tertiary)] bg-[var(--surface-muted)] px-2 py-1 rounded-[var(--radius-skeleton)]">
+            Shared Consultation
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 py-4 sm:py-6">
+        <div className="max-w-2xl mx-auto px-3 sm:px-4">
+          {/* Call to action for starting own consultation */}
+          <div className="mb-4 sm:mb-6 bg-linear-to-r from-[var(--gradient-warm-from)] to-[var(--gradient-warm-to)] border border-[var(--border-warm)] rounded-[var(--radius-card)] px-3 sm:px-4 py-2.5 sm:py-3">
+            <p className="text-xs sm:text-sm text-[var(--text-primary)]">
+              Want guidance for your own situation?{" "}
+              <Link
+                to="/cases/new"
+                className="text-[var(--interactive-ghost-text)] hover:text-[var(--text-primary)] font-medium"
+              >
+                Start a consultation →
+              </Link>
+            </p>
+          </div>
+
+          {/* Main Content - Timeline */}
+          <div className="relative">
+            {/* Vertical Line */}
+            <div className="absolute left-2.5 sm:left-3 top-6 bottom-0 w-0.5 bg-linear-to-b from-[var(--gradient-warm-from)] via-[var(--interactive-primary)] to-[var(--gradient-page-to)]" />
+
+            {/* Exchanges */}
+            {exchanges.map((exchange, exchangeIdx) => {
+              const isFirst = exchangeIdx === 0;
+              const isEven = exchangeIdx % 2 === 0;
+              const isSourcesExpanded = exchange.output
+                ? expandedSources.has(exchange.output.id)
+                : false;
+
+              return (
+                <div
+                  key={exchange.user.id}
+                  className={`${!isFirst ? `py-4 -mx-3 px-3 sm:-mx-4 sm:px-4 rounded-[var(--radius-card)] ${isEven ? "bg-[var(--surface-muted-translucent-subtle)]" : ""}` : ""}`}
+                >
+                  {/* Question */}
+                  <div className="relative pl-8 sm:pl-10 pb-3 sm:pb-4">
+                    <div
+                      className={`absolute left-0 w-6 h-6 sm:w-7 sm:h-7 rounded-[var(--radius-avatar)] flex items-center justify-center ${
+                        isFirst
+                          ? "bg-[var(--interactive-contextual)] text-[var(--interactive-contextual-text)]"
+                          : "bg-[var(--status-info-bg)] border-2 border-[var(--status-info-border)]"
+                      }`}
+                    >
+                      {isFirst ? (
+                        <svg
+                          className="w-3 h-3 sm:w-4 sm:h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      ) : (
+                        <span className="text-xs text-[var(--status-info-text)]">
+                          +
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                      <span
+                        className={`text-xs font-semibold uppercase tracking-wide ${
+                          isFirst
+                            ? "text-[var(--text-accent)]"
+                            : "text-[var(--status-info-text)]"
+                        }`}
+                      >
+                        {isFirst ? "Question" : "Follow-up"}
+                      </span>
+                      {exchange.user.created_at && (
+                        <time
+                          dateTime={exchange.user.created_at}
+                          className="text-[10px] text-[var(--text-muted)]"
+                          title={new Date(exchange.user.created_at).toLocaleString()}
+                        >
+                          {formatRelativeTime(exchange.user.created_at)}
+                        </time>
+                      )}
+                    </div>
+                    <div
+                      className={`rounded-[var(--radius-card)] p-3 sm:p-4 ${
+                        isFirst
+                          ? "bg-[var(--surface-elevated)] shadow-[var(--shadow-dropdown)] border-2 border-[var(--border-warm)]"
+                          : "bg-[var(--status-info-bg)] border border-[var(--status-info-border)]"
+                      }`}
+                    >
+                      <p
+                        className={`leading-relaxed whitespace-pre-wrap ${isFirst ? "text-[var(--text-primary)] text-sm sm:text-base" : "text-[var(--text-primary)] text-sm"}`}
+                      >
+                        {exchange.user.content}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Response - only show if assistant message exists */}
+                  {exchange.assistant && (
+                    <div className="relative pl-8 sm:pl-10 pb-4 sm:pb-6">
+                      <div
+                        className={`absolute left-0 w-6 h-6 sm:w-7 sm:h-7 rounded-[var(--radius-avatar)] flex items-center justify-center ${
+                          isFirst
+                            ? "bg-[var(--interactive-primary)] text-[var(--interactive-primary-text)]"
+                            : "bg-[var(--badge-primary-bg)] border-2 border-[var(--border-warm)]"
+                        }`}
+                      >
+                        {isFirst ? (
+                          <svg
+                            className="w-3 h-3 sm:w-4 sm:h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                            />
+                          </svg>
+                        ) : (
+                          <span className="text-xs text-[var(--interactive-ghost-text)]">
+                            ~
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        className={`flex items-center justify-between mb-1.5 sm:mb-2`}
+                      >
+                        <span
+                          className={`text-xs font-semibold uppercase tracking-wide ${
+                            isFirst
+                              ? "text-[var(--interactive-ghost-text)]"
+                              : "text-[var(--interactive-ghost-text)]"
+                          }`}
+                        >
+                          {isFirst ? "Wisdom from the Gita" : "Guidance"}
+                        </span>
+                        <SpeakButton
+                          text={exchange.assistant.content}
+                          lang="en"
+                          size="sm"
+                          aria-label="Listen to guidance"
+                        />
+                      </div>
+
+                      <div
+                        className={`rounded-[var(--radius-card)] p-3 sm:p-4 border ${
+                          isFirst
+                            ? "bg-[var(--surface-elevated)] shadow-[var(--shadow-dropdown)] border-[var(--border-warm)]"
+                            : "bg-[var(--surface-elevated)] shadow-[var(--shadow-card)] border-[var(--border-warm)]"
+                        }`}
+                      >
+                        <GuidanceMarkdown
+                          content={exchange.assistant.content}
+                          sources={exchange.output?.result_json.sources}
+                          className={`leading-relaxed prose max-w-none ${isFirst ? "text-[var(--text-primary)]" : "text-[var(--text-primary)]"} prose-p:my-2 prose-ul:my-2 prose-li:my-0.5`}
+                        />
+
+                        {/* Verse Sources */}
+                        {exchange.output &&
+                          exchange.output.result_json.sources?.length > 0 && (
+                            <div className="mt-3 sm:mt-4">
+                              <button
+                                onClick={() =>
+                                  exchange.output &&
+                                  toggleSources(exchange.output.id)
+                                }
+                                className="min-h-[44px] px-3 py-2 -ml-3 text-sm font-medium text-[var(--interactive-ghost-text)] hover:text-[var(--text-link-hover)] hover:bg-[var(--surface-muted)] flex items-center gap-2 rounded-[var(--radius-button)] transition-[var(--transition-color)]"
+                              >
+                                <svg
+                                  className={`w-4 h-4 transition-transform ${isSourcesExpanded ? "rotate-90" : ""}`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5l7 7-7 7"
+                                  />
+                                </svg>
+                                {exchange.output.result_json.sources.length}{" "}
+                                verse reference
+                                {exchange.output.result_json.sources.length > 1
+                                  ? "s"
+                                  : ""}
+                              </button>
+
+                              {isSourcesExpanded && (
+                                <div className="mt-2 sm:mt-3 space-y-2">
+                                  {exchange.output.result_json.sources.map(
+                                    (source) => (
+                                      <div
+                                        key={source.canonical_id}
+                                        className="bg-linear-to-r from-[var(--gradient-warm-from)] to-[var(--gradient-warm-to)] rounded-[var(--radius-button)] p-2.5 sm:p-3 border border-[var(--border-warm)]"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <Link
+                                            to={`/verses/${source.canonical_id}`}
+                                            className="font-mono text-[var(--interactive-ghost-text)] font-semibold text-xs sm:text-sm hover:underline"
+                                          >
+                                            {formatVerseRef(source.canonical_id)}
+                                          </Link>
+                                        </div>
+                                        <p className="mt-1 sm:mt-1.5 text-[var(--text-primary)] italic text-xs sm:text-sm">
+                                          "{source.paraphrase}"
+                                        </p>
+                                      </div>
+                                    ),
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                        {/* Confidence */}
+                        {exchange.output && (
+                          <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-[var(--border-default)] flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
+                            <span>Confidence:</span>
+                            <div className="w-10 sm:w-12 bg-[var(--border-default)] rounded-[var(--radius-progress)] h-1.5">
+                              <div
+                                className={`h-1.5 rounded-[var(--radius-progress)] ${
+                                  exchange.output.confidence >= 0.8
+                                    ? "bg-[var(--status-success-text)]"
+                                    : exchange.output.confidence >= 0.6
+                                      ? "bg-[var(--status-warning-text)]"
+                                      : "bg-[var(--status-error-text)]"
+                                }`}
+                                style={{
+                                  width: `${exchange.output.confidence * 100}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="font-medium">
+                              {(exchange.output.confidence * 100).toFixed(0)}%
+                            </span>
+                            {/* Subtle info icon for confidence reason tooltip */}
+                            {exchange.output.confidence_reason && (
+                              <div className="group relative">
+                                <button
+                                  className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                                  title={exchange.output.confidence_reason}
+                                  aria-label="Confidence explanation"
+                                >
+                                  <svg
+                                    className="w-3.5 h-3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
+                                  </svg>
+                                </button>
+                                {/* CSS-based tooltip */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                                  <div className="bg-[var(--surface-secondary)] text-[var(--text-primary)] text-xs rounded-[var(--radius-button)] px-3 py-2 whitespace-nowrap shadow-lg border border-[var(--border-subtle)]">
+                                    {exchange.output.confidence_reason}
+                                  </div>
+                                  {/* Tooltip arrow */}
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-[var(--surface-secondary)]" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Interpretive tradition disclosure - subtle, first exchange only */}
+                        {isFirst && (
+                          <div className="mt-4 pt-3 border-t border-[var(--border-default)] flex items-center justify-between gap-4">
+                            <p className="text-[10px] sm:text-xs text-[var(--text-muted)] italic">
+                              AI-generated guidance based on Bhagavad Gita
+                              verses.{" "}
+                              <Link
+                                to="/about#our-approach"
+                                className="underline hover:text-[var(--text-secondary)]"
+                              >
+                                Learn about our approach
+                              </Link>
+                            </p>
+                            {hasSummary && (
+                              <button
+                                onClick={scrollToSummary}
+                                className="flex items-center gap-1 text-[10px] sm:text-xs text-[var(--text-accent)] hover:text-[var(--text-accent-hover)] font-medium whitespace-nowrap transition-[var(--transition-color)]"
+                              >
+                                <span>Summary</span>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Guidance Summary - Static sections from initial analysis */}
+          {firstOutput &&
+            (firstOutput.result_json.options?.length > 0 ||
+              (typeof firstOutput.result_json.recommended_action === "object" &&
+                (firstOutput.result_json.recommended_action.steps?.length ??
+                  0) > 0) ||
+              firstOutput.result_json.reflection_prompts?.length > 0) && (
+              <div
+                ref={summaryRef}
+                className="mt-8 pt-6 border-t border-[var(--border-warm-subtle)]"
+              >
+                {/* Section Header */}
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-[var(--radius-avatar)] bg-[var(--badge-warm-bg)] flex items-center justify-center">
+                    <svg
+                      className="w-4 h-4 text-[var(--interactive-ghost-text)]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                      Guidance Summary
+                    </h2>
+                    <p className="text-xs text-[var(--text-tertiary)]">
+                      Key insights from this consultation
+                    </p>
+                  </div>
+                </div>
+
+                {/* Paths/Options Section */}
+                {firstOutput.result_json.options?.length > 0 && (
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setShowPaths(!showPaths)}
+                      className="w-full text-left"
+                    >
+                      <div className="flex items-center justify-between bg-[var(--surface-elevated)] rounded-[var(--radius-card)] p-3 sm:p-4 shadow-[var(--shadow-button)] border border-[var(--border-warm)] hover:shadow-[var(--shadow-card)] transition-[var(--transition-shadow)]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-[var(--radius-avatar)] bg-[var(--badge-primary-bg)] flex items-center justify-center">
+                            <svg
+                              className="w-4 h-4 text-[var(--interactive-ghost-text)]"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-[var(--interactive-ghost-text)] uppercase tracking-wide">
+                              Paths to Consider
+                            </div>
+                            <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                              {firstOutput.result_json.options.length}{" "}
+                              approaches
+                            </p>
+                          </div>
+                        </div>
+                        <svg
+                          className={`w-5 h-5 text-[var(--text-muted)] transition-transform ${showPaths ? "rotate-180" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </div>
+                    </button>
+
+                    {showPaths && (
+                      <div className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
+                        <div className="flex sm:grid sm:grid-cols-3 gap-2 overflow-x-auto pb-1 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0">
+                          {firstOutput.result_json.options.map((opt, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setSelectedOption(idx)}
+                              className={`shrink-0 w-[140px] sm:w-auto p-2.5 sm:p-3 rounded-[var(--radius-card)] border-2 text-left transition-all h-full ${
+                                selectedOption === idx
+                                  ? "bg-[var(--badge-primary-bg)] border-[var(--interactive-primary)] shadow-[var(--shadow-card)]"
+                                  : "bg-[var(--surface-elevated)] border-[var(--border-default)] hover:border-[var(--border-warm)]"
+                              }`}
+                            >
+                              <div
+                                className={`text-xs font-semibold ${selectedOption === idx ? "text-[var(--interactive-ghost-text)]" : "text-[var(--text-tertiary)]"}`}
+                              >
+                                Path {idx + 1}
+                              </div>
+                              <div
+                                className={`text-sm font-medium mt-1 leading-snug ${selectedOption === idx ? "text-[var(--badge-primary-text)]" : "text-[var(--text-primary)]"}`}
+                              >
+                                {opt.title.replace(" Approach", "")}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="bg-[var(--surface-elevated)] rounded-[var(--radius-card)] shadow-[var(--shadow-button)] p-3 sm:p-4 border border-[var(--border-default)]">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="font-semibold text-[var(--text-primary)] text-sm sm:text-base">
+                              {
+                                firstOutput.result_json.options[selectedOption]
+                                  .title
+                              }
+                            </h4>
+                            <SpeakButton
+                              text={`Paths to Consider. Path ${selectedOption + 1}: ${firstOutput.result_json.options[selectedOption].title}. Benefits: ${firstOutput.result_json.options[selectedOption].pros.join(". ")}. Considerations: ${firstOutput.result_json.options[selectedOption].cons.join(". ")}.`}
+                              size="sm"
+                              aria-label="Listen to this path"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
+                            <div>
+                              <div className="text-xs font-semibold text-[var(--status-success-text)] mb-1">
+                                Benefits
+                              </div>
+                              {firstOutput.result_json.options[
+                                selectedOption
+                              ].pros.map((pro, i) => (
+                                <div
+                                  key={i}
+                                  className="text-sm sm:text-base text-[var(--text-primary)] flex items-start gap-1 mb-0.5"
+                                >
+                                  <span className="text-[var(--status-success-text)] mt-0.5 text-xs">
+                                    +
+                                  </span>{" "}
+                                  {pro}
+                                </div>
+                              ))}
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-[var(--text-accent)] mb-1">
+                                Consider
+                              </div>
+                              {firstOutput.result_json.options[
+                                selectedOption
+                              ].cons.map((con, i) => (
+                                <div
+                                  key={i}
+                                  className="text-sm sm:text-base text-[var(--text-primary)] flex items-start gap-1 mb-0.5"
+                                >
+                                  <span className="text-[var(--text-accent)] mt-0.5 text-xs">
+                                    -
+                                  </span>{" "}
+                                  {con}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Recommended Steps */}
+                {typeof firstOutput.result_json.recommended_action ===
+                  "object" &&
+                  (firstOutput.result_json.recommended_action.steps?.length ??
+                    0) > 0 && (
+                    <div className="mb-4">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setShowSteps(!showSteps)}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setShowSteps(!showSteps)
+                        }
+                        className="w-full text-left cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between bg-[var(--surface-elevated)] rounded-[var(--radius-card)] p-3 sm:p-4 shadow-[var(--shadow-button)] border border-[var(--status-success-border)] hover:shadow-[var(--shadow-card)] transition-[var(--transition-shadow)]">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-[var(--radius-avatar)] bg-[var(--status-success-bg)] flex items-center justify-center">
+                              <svg
+                                className="w-4 h-4 text-[var(--status-success-text)]"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-[var(--status-success-text)] uppercase tracking-wide">
+                                Recommended Steps
+                              </div>
+                              <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                                {
+                                  (
+                                    firstOutput.result_json
+                                      .recommended_action as { steps: string[] }
+                                  ).steps.length
+                                }{" "}
+                                actionable steps
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span onClick={(e) => e.stopPropagation()}>
+                              <SpeakButton
+                                text={
+                                  "Recommended Steps. " +
+                                  (
+                                    firstOutput.result_json
+                                      .recommended_action as { steps: string[] }
+                                  ).steps
+                                    .map((s, i) => `Step ${i + 1}: ${s}`)
+                                    .join(". ")
+                                }
+                                size="sm"
+                                aria-label="Listen to recommended steps"
+                              />
+                            </span>
+                            <svg
+                              className={`w-5 h-5 text-[var(--text-muted)] transition-transform ${showSteps ? "rotate-180" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      {showSteps && (
+                        <div className="mt-2 sm:mt-3 bg-[var(--surface-elevated)] rounded-[var(--radius-card)] shadow-[var(--shadow-button)] p-3 sm:p-4 border border-[var(--status-success-border)]">
+                          <div className="space-y-2.5 sm:space-y-3">
+                            {(
+                              firstOutput.result_json.recommended_action as {
+                                steps: string[];
+                              }
+                            ).steps.map((step, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-start gap-2 sm:gap-3"
+                              >
+                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-[var(--radius-avatar)] bg-[var(--status-success-bg)] text-[var(--status-success-text)] flex items-center justify-center shrink-0 text-xs font-medium">
+                                  {idx + 1}
+                                </div>
+                                <p className="text-sm sm:text-base text-[var(--text-primary)] pt-0.5">
+                                  {step}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                {/* Reflection Prompts */}
+                {firstOutput.result_json.reflection_prompts?.length > 0 && (
+                  <div className="mb-4">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setShowReflections(!showReflections)}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" &&
+                        setShowReflections(!showReflections)
+                      }
+                      className="w-full text-left cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between bg-[var(--surface-card)] rounded-[var(--radius-card)] p-3 sm:p-4 shadow-[var(--shadow-button)] border border-[var(--border-warm)] hover:shadow-[var(--shadow-card)] transition-[var(--transition-shadow)]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-[var(--radius-avatar)] bg-[var(--badge-warm-bg)] flex items-center justify-center">
+                            <svg
+                              className="w-4 h-4 text-[var(--text-accent)]"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-[var(--text-accent)] uppercase tracking-wide">
+                              Questions for Reflection
+                            </div>
+                            <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                              {
+                                firstOutput.result_json.reflection_prompts
+                                  .length
+                              }{" "}
+                              prompts
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span onClick={(e) => e.stopPropagation()}>
+                            <SpeakButton
+                              text={
+                                "Questions for Reflection. " +
+                                firstOutput.result_json.reflection_prompts
+                                  .map((p, i) => `Question ${i + 1}: ${p}`)
+                                  .join(". ")
+                              }
+                              size="sm"
+                              aria-label="Listen to reflection questions"
+                            />
+                          </span>
+                          <svg
+                            className={`w-5 h-5 text-[var(--text-muted)] transition-transform ${showReflections ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {showReflections && (
+                      <div className="mt-2 sm:mt-3 bg-[var(--surface-card)] rounded-[var(--radius-card)] p-3 sm:p-4 border border-[var(--border-warm)]">
+                        <ul className="space-y-2.5 sm:space-y-3">
+                          {firstOutput.result_json.reflection_prompts.map(
+                            (prompt, idx) => (
+                              <li
+                                key={idx}
+                                className="flex items-start gap-2 text-[var(--text-primary)]"
+                              >
+                                <span className="text-[var(--text-accent-muted)] mt-0.5 text-xs sm:text-sm">
+                                  ◆
+                                </span>
+                                <span className="text-sm sm:text-base italic">
+                                  {prompt}
+                                </span>
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+          {/* CTA at bottom */}
+          <div className="mt-6 sm:mt-8 bg-[var(--surface-elevated)] rounded-[var(--radius-card)] shadow-[var(--shadow-card)] p-4 sm:p-6 text-center">
+            <h3 className="font-semibold text-[var(--text-primary)] text-sm sm:text-base mb-1.5 sm:mb-2">
+              Need guidance for your situation?
+            </h3>
+            <p className="text-xs sm:text-sm text-[var(--text-secondary)] mb-3 sm:mb-4">
+              Start your own consultation and receive personalized wisdom from
+              the Bhagavad Gita.
+            </p>
+            <Link
+              to="/cases/new"
+              className="inline-block px-4 sm:px-6 py-2.5 sm:py-3 bg-[var(--interactive-primary)] text-[var(--interactive-primary-text)] rounded-[var(--radius-card)] hover:opacity-90 transition-[var(--transition-color)] font-medium text-sm sm:text-base"
+            >
+              Start a Consultation
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <Footer />
+    </div>
+  );
+}

@@ -1,0 +1,1196 @@
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { casesApi, outputsApi } from "../lib/api";
+import { messagesApi } from "../api/messages";
+import type { Case, Message, Output, Option } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  Navbar,
+  ConfirmModal,
+  ContentNotFound,
+  GuidanceMarkdown,
+} from "../components";
+import { SpeakButton } from "../components/SpeakButton";
+import { errorMessages } from "../lib/errorMessages";
+import { validateContent } from "../lib/contentFilter";
+import { groupMessagesIntoExchanges } from "../lib/messageGrouping";
+import { formatRelativeTime } from "../lib/dateUtils";
+import { formatVerseRef } from "../lib/verseLinker";
+import { useSEO, useFeedback } from "../hooks";
+import {
+  CaseHeader,
+  CompletionBanner,
+  OutputFeedback,
+  PathsSection,
+  StepsSection,
+  ReflectionsSection,
+  FollowUpInput,
+  ThinkingIndicator,
+} from "../components/case";
+
+export default function CaseView() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [caseData, setCaseData] = useState<Case | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [outputs, setOutputs] = useState<Output[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submittingFollowUp, setSubmittingFollowUp] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
+  const [followUp, setFollowUp] = useState("");
+  const [pendingFollowUp, setPendingFollowUp] = useState<string | null>(null);
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
+  const { isAuthenticated } = useAuth();
+
+  // Refs for scrolling
+  const followUpInputRef = useRef<HTMLDivElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to summary section
+  const scrollToSummary = useCallback(() => {
+    summaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  // Dynamic SEO - private consultations shouldn't be indexed
+  useSEO({
+    title: caseData?.title ? caseData.title.slice(0, 50) : "Consultation",
+    description:
+      "Your private ethical consultation with guidance from the Bhagavad Gita.",
+    canonical: id ? `/cases/${id}` : "/consultations",
+    noIndex: true, // Private consultations shouldn't be indexed
+  });
+
+  // Expanded state for sections
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(
+    new Set(),
+  );
+  const [showPaths, setShowPaths] = useState(true);
+  const [showSteps, setShowSteps] = useState(true);
+  const [showReflections, setShowReflections] = useState(true);
+
+  // Feedback state (extracted to hook)
+  const {
+    feedbackGiven,
+    feedbackLoading,
+    expandedFeedback,
+    feedbackText,
+    savedComment,
+    initializeFeedback,
+    handleFeedback,
+    handleSubmitNegativeFeedback,
+    handleEditFeedback,
+    handleCancelFeedback,
+    handleFeedbackTextChange,
+  } = useFeedback();
+
+  // Share state
+  const [shareLoading, setShareLoading] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Analysis completion indicator
+  const [showCompletionBanner, setShowCompletionBanner] = useState(false);
+  const [wasProcessing, setWasProcessing] = useState(false);
+
+  // Path selection for options
+  const [selectedOption, setSelectedOption] = useState(0);
+
+  // Status-based flags for action visibility
+  const isDraft = caseData?.status === "draft";
+  const isProcessing =
+    caseData?.status === "pending" || caseData?.status === "processing";
+  const isFailed = caseData?.status === "failed";
+  const isPolicyViolation = caseData?.status === "policy_violation";
+  const isCompleted =
+    caseData?.status === "completed" || isPolicyViolation || !caseData?.status;
+
+  // Action visibility based on status
+  const canSave = isCompleted && outputs.length > 0;
+  // Don't allow sharing policy_violation cases - educational responses aren't meant to be shared
+  const canShare = isCompleted && outputs.length > 0 && !isPolicyViolation;
+  const canDelete = true;
+
+  // Follow-up input visibility: show when completed with at least one output (but not policy_violation)
+  // Policy violations don't allow follow-ups since the case can't be processed further
+  const showFollowUpInput =
+    isCompleted && !isPolicyViolation && outputs.length > 0;
+
+  const loadCaseData = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      const data = await casesApi.get(id);
+      setCaseData(data);
+
+      // Always fetch messages and outputs (even during processing)
+      // This ensures we can show existing content while follow-up is being analyzed
+      const messagesData = await messagesApi.list(id);
+      setMessages(messagesData);
+
+      const outputsData = await outputsApi.listByCaseId(id);
+      setOutputs(outputsData);
+
+      // Initialize feedback state from loaded outputs
+      initializeFeedback(outputsData);
+
+      // When completed/failed/policy_violation, clear pending state and set up UI
+      const isFinished =
+        data.status === "completed" ||
+        data.status === "failed" ||
+        data.status === "policy_violation" ||
+        !data.status;
+      if (isFinished) {
+        setPendingFollowUp(null);
+
+        if (!isAuthenticated && outputsData.length > 0) {
+          setShowSignupPrompt(true);
+        }
+      } else if (data.status === "processing" || data.status === "pending") {
+        // During processing, detect pending follow-up from messages
+        // If the last user message doesn't have a corresponding output, it's the pending one
+        const userMessages = messagesData.filter((m) => m.role === "user");
+        const lastUserMessage = userMessages[userMessages.length - 1];
+
+        if (
+          lastUserMessage &&
+          outputsData.length > 0 &&
+          outputsData.length < userMessages.length
+        ) {
+          // There's a user message without a response - that's the pending follow-up
+          // Note: outputsData.length > 0 ensures this only triggers for follow-ups, not initial consultation
+          setPendingFollowUp(lastUserMessage.content);
+        }
+      }
+    } catch (err) {
+      setError(errorMessages.caseLoad(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [id, isAuthenticated, initializeFeedback]);
+
+  useEffect(() => {
+    loadCaseData();
+  }, [loadCaseData]);
+
+  // Track when case transitions from processing to completed
+  useEffect(() => {
+    if (isProcessing) {
+      setWasProcessing(true);
+    }
+  }, [isProcessing]);
+
+  // Show completion banner when analysis finishes
+  useEffect(() => {
+    if (wasProcessing && isCompleted && outputs.length > 0) {
+      setShowCompletionBanner(true);
+      setWasProcessing(false);
+      // Auto-hide banner after 5 seconds
+      const timer = setTimeout(() => setShowCompletionBanner(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [wasProcessing, isCompleted, outputs.length]);
+
+  // Auto-hide signup prompt after 30 seconds
+  useEffect(() => {
+    if (!showSignupPrompt) return;
+    const timer = setTimeout(() => setShowSignupPrompt(false), 30000);
+    return () => clearTimeout(timer);
+  }, [showSignupPrompt]);
+
+  // Polling for processing status
+  // LLM operations take 1-3 minutes. Fixed 5s interval balances:
+  // - Reasonable request count (~24 for 2-min op)
+  // - Predictable latency (max 5s after completion)
+  // - Simple to reason about
+  useEffect(() => {
+    if (!isProcessing || !id) return;
+
+    const POLL_INTERVAL = 5000; // 5 seconds
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const data = await casesApi.get(id);
+        setCaseData(data);
+
+        if (
+          data.status === "completed" ||
+          data.status === "failed" ||
+          data.status === "policy_violation"
+        ) {
+          clearInterval(pollInterval);
+          // Fetch final data
+          const [messagesData, outputsData] = await Promise.all([
+            messagesApi.list(id),
+            outputsApi.listByCaseId(id),
+          ]);
+          setMessages(messagesData);
+          setOutputs(outputsData);
+
+          // Initialize feedback state from loaded outputs
+          initializeFeedback(outputsData);
+
+          setPendingFollowUp(null);
+        }
+      } catch {
+        // Silent fail - polling will retry
+      }
+    }, POLL_INTERVAL);
+
+    return () => clearInterval(pollInterval);
+  }, [isProcessing, id, initializeFeedback]);
+
+  const handleRetry = async () => {
+    if (!id || !caseData) return;
+    try {
+      if (caseData.status === "failed") {
+        await casesApi.retry(id);
+      }
+      await casesApi.analyze(id);
+      const data = await casesApi.get(id);
+      setCaseData(data);
+      setError(null);
+    } catch (err) {
+      setError(errorMessages.caseAnalyze(err));
+    }
+  };
+
+  const handleDeleteClick = () => setShowDeleteModal(true);
+
+  const handleDeleteConfirm = async () => {
+    if (!id || !caseData) return;
+    setDeleteLoading(true);
+    try {
+      await casesApi.delete(id);
+      navigate("/consultations");
+    } catch (err) {
+      setError(errorMessages.general(err));
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    if (!deleteLoading) setShowDeleteModal(false);
+  };
+
+  const toggleSources = (outputId: string) => {
+    setExpandedSources((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(outputId)) newSet.delete(outputId);
+      else newSet.add(outputId);
+      return newSet;
+    });
+  };
+
+  const handleFollowUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !followUp.trim() || !caseData) return;
+
+    const messageContent = followUp.trim();
+
+    // Client-side content validation (gibberish, abuse detection)
+    // Use lenient mode for follow-ups - they're often specialized questions
+    const contentCheck = validateContent(messageContent, true);
+    if (!contentCheck.valid) {
+      setFollowUpError(
+        contentCheck.reason || "Please check your input and try again.",
+      );
+      return;
+    }
+
+    setSubmittingFollowUp(true);
+    setFollowUpError(null);
+
+    try {
+      // Store the pending message for display while waiting
+      setPendingFollowUp(messageContent);
+      setFollowUp("");
+
+      // Submit follow-up (async - returns 202 with user message)
+      // Assistant response is processed in background
+      const userMessage = await messagesApi.followUp(id, {
+        content: messageContent,
+      });
+
+      // Add the user message to the list immediately
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: userMessage.id,
+          case_id: userMessage.case_id,
+          role: userMessage.role,
+          content: userMessage.content,
+          output_id: userMessage.output_id ?? undefined,
+          created_at: userMessage.created_at,
+        },
+      ]);
+
+      // Update case status to "processing" to trigger existing polling
+      // The polling will detect when status becomes "completed" and fetch messages
+      setCaseData({ ...caseData, status: "processing" });
+
+      // Keep pendingFollowUp set - polling will clear it when assistant responds
+      // This ensures the thinking indicator shows while background processes
+    } catch (err) {
+      // On error, restore the message and clear pending state
+      setFollowUp(messageContent);
+      setPendingFollowUp(null);
+      setFollowUpError(errorMessages.followUp(err));
+    } finally {
+      setSubmittingFollowUp(false);
+    }
+  };
+
+  // Handler for "refine this guidance" CTA on low-confidence outputs
+  const handleRefineGuidance = useCallback((prefillText?: string) => {
+    if (prefillText) {
+      setFollowUp(prefillText);
+    }
+    // Scroll to follow-up input after a brief delay to ensure it's rendered
+    setTimeout(() => {
+      followUpInputRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      // Focus the textarea inside the follow-up input
+      const textarea = followUpInputRef.current?.querySelector("textarea");
+      textarea?.focus();
+    }, 100);
+  }, []);
+
+  const handleSave = () => {
+    if (!caseData) return;
+
+    // Get the first (main) output for paths, steps, and reflections
+    const firstOutput = outputs.length > 0 ? outputs[outputs.length - 1] : null;
+
+    let markdown = `# ${caseData.title}
+
+*Consultation on ${caseData.created_at ? new Date(caseData.created_at).toLocaleDateString() : "Unknown date"}*
+`;
+
+    // Add policy violation notice if applicable
+    if (isPolicyViolation) {
+      markdown += `
+> **Note:** This consultation could not be processed as submitted. The response below contains suggestions for rephrasing your question to receive guidance from the Bhagavad Gita.
+
+`;
+    }
+
+    markdown += `---
+
+${messages
+  .map((msg) => {
+    if (msg.role === "user") {
+      return `## Question\n\n${msg.content}\n`;
+    } else {
+      const msgOutput = outputs.find((o) => o.id === msg.output_id);
+      let text = `## Guidance\n\n${msg.content}\n`;
+      if (msgOutput?.result_json.sources?.length) {
+        text += `\n### Verse References\n\n${msgOutput.result_json.sources
+          .map(
+            (s) =>
+              `- **${s.canonical_id.replace(/_/g, " ")}**: "${s.paraphrase}"`,
+          )
+          .join("\n")}\n`;
+      }
+      return text;
+    }
+  })
+  .join("\n---\n\n")}
+
+---
+`;
+
+    // Add Guidance Summary section header if any summary sections exist
+    const hasPaths = firstOutput && firstOutput.result_json.options?.length > 0;
+    const hasSteps =
+      firstOutput &&
+      typeof firstOutput.result_json.recommended_action === "object" &&
+      (firstOutput.result_json.recommended_action as { steps?: string[] })
+        ?.steps?.length;
+    const hasReflections =
+      firstOutput && firstOutput.result_json.reflection_prompts?.length > 0;
+
+    if (hasPaths || hasSteps || hasReflections) {
+      markdown += `\n# Guidance Summary\n\n*Key insights from your consultation*\n\n---\n`;
+    }
+
+    // Add Paths Before You (Options)
+    if (hasPaths) {
+      markdown += `\n## Paths Before You\n\n`;
+      firstOutput.result_json.options.forEach((option: Option, idx: number) => {
+        markdown += `### Path ${idx + 1}: ${option.title}\n\n`;
+        if (option.description) {
+          markdown += `${option.description}\n\n`;
+        }
+
+        if (option.pros?.length) {
+          markdown += `**Strengths:**\n`;
+          option.pros.forEach((pro: string) => {
+            markdown += `- ${pro}\n`;
+          });
+          markdown += "\n";
+        }
+
+        if (option.cons?.length) {
+          markdown += `**Considerations:**\n`;
+          option.cons.forEach((con: string) => {
+            markdown += `- ${con}\n`;
+          });
+          markdown += "\n";
+        }
+
+        if (option.sources?.length) {
+          markdown += `**Related Verses:** ${option.sources.join(", ")}\n\n`;
+        }
+      });
+      markdown += `---\n`;
+    }
+
+    // Add Recommended Steps
+    if (hasSteps) {
+      markdown += `\n## Recommended Steps\n\n`;
+      const recommendedAction = firstOutput.result_json.recommended_action as {
+        steps?: string[];
+        sources?: string[];
+      };
+      (recommendedAction.steps ?? []).forEach((step: string, idx: number) => {
+        markdown += `${idx + 1}. ${step}\n`;
+      });
+
+      if (recommendedAction.sources?.length) {
+        markdown += `\n**Supporting Verses:** ${recommendedAction.sources.join(", ")}\n`;
+      }
+      markdown += `\n---\n`;
+    }
+
+    // Add Reflection Prompts
+    if (hasReflections) {
+      markdown += `\n## Reflection Prompts\n\nTake time to reflect on these questions:\n\n`;
+      firstOutput.result_json.reflection_prompts.forEach(
+        (prompt: string, idx: number) => {
+          markdown += `${idx + 1}. ${prompt}\n`;
+        },
+      );
+      markdown += `\n---\n`;
+    }
+
+    markdown += `\n*Exported from Geetanjali*\n`;
+
+    const blob = new Blob([markdown], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `consultation-${caseData.id.slice(0, 8)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShare = async () => {
+    if (!caseData || !id) return;
+
+    setShareLoading(true);
+    try {
+      const updated = await casesApi.toggleShare(id, true, "full");
+      setCaseData(updated);
+
+      // Auto-copy link when sharing is enabled
+      if (updated.public_slug) {
+        const url = `${window.location.origin}/c/${updated.public_slug}`;
+        await navigator.clipboard.writeText(url);
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+      }
+    } catch {
+      setError("We couldn't share this consultation. Please try again.");
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleModeChange = async (mode: "full" | "essential") => {
+    if (!caseData || !id) return;
+
+    setShareLoading(true);
+    try {
+      const updated = await casesApi.toggleShare(id, true, mode);
+      setCaseData(updated);
+    } catch {
+      setError("We couldn't update sharing settings. Please try again.");
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleStopSharing = async () => {
+    if (!caseData || !id) return;
+
+    setShareLoading(true);
+    try {
+      const updated = await casesApi.toggleShare(id, false);
+      setCaseData(updated);
+    } catch {
+      setError("We couldn't stop sharing. Please try again.");
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const copyShareLink = () => {
+    if (!caseData?.public_slug) return;
+    const url = `${window.location.origin}/c/${caseData.public_slug}`;
+    navigator.clipboard.writeText(url);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  // Group messages into exchanges using shared utility
+  const exchanges = useMemo(
+    () => groupMessagesIntoExchanges(messages, outputs),
+    [messages, outputs],
+  );
+
+  // Get first output for paths/steps/reflections
+  const firstOutput = outputs.length > 0 ? outputs[outputs.length - 1] : null;
+
+  // Check if summary section will be shown (for jump link visibility)
+  const hasSummary = firstOutput && (
+    firstOutput.result_json.options?.length > 0 ||
+    (typeof firstOutput.result_json.recommended_action === "object" &&
+      (firstOutput.result_json.recommended_action.steps?.length ?? 0) > 0) ||
+    firstOutput.result_json.reflection_prompts?.length > 0
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-[var(--gradient-page-from)] to-[var(--gradient-page-to)] flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-[var(--text-tertiary)]">
+            Loading consultation...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!caseData) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-[var(--gradient-page-from)] to-[var(--gradient-page-to)] flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <ContentNotFound variant="case" isAuthenticated={isAuthenticated} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-linear-to-br from-[var(--gradient-page-from)] to-[var(--gradient-page-to)] flex flex-col">
+      <Navbar />
+
+      <CaseHeader
+        caseData={caseData}
+        canSave={canSave}
+        canDelete={canDelete}
+        canShare={canShare}
+        shareLoading={shareLoading}
+        copySuccess={copySuccess}
+        onSave={handleSave}
+        onDeleteClick={handleDeleteClick}
+        onShare={handleShare}
+        onModeChange={handleModeChange}
+        onStopSharing={handleStopSharing}
+        onCopyShareLink={copyShareLink}
+      />
+
+      <main className="flex-1 py-4 sm:py-6">
+        <div className="max-w-2xl mx-auto px-3 sm:px-4">
+          {/* Analysis Complete Banner */}
+          {showCompletionBanner && (
+            <CompletionBanner
+              isPolicyViolation={isPolicyViolation}
+              onDismiss={() => setShowCompletionBanner(false)}
+            />
+          )}
+
+          {/* Error Alert */}
+          {error && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-6 bg-[var(--status-error-bg)] border border-[var(--status-error-border)] text-[var(--status-error-text)] px-4 py-3 rounded-[var(--radius-card)]"
+            >
+              <strong>Error:</strong> {error}
+            </div>
+          )}
+
+          {/* Signup reminder */}
+          {showSignupPrompt && !isAuthenticated && (
+            <div className="mb-6 bg-[var(--surface-muted)] border border-[var(--border-default)] rounded-[var(--radius-card)] px-4 py-3 flex items-center justify-between">
+              <p className="text-sm text-[var(--text-tertiary)]">
+                <Link
+                  to="/signup"
+                  className="text-[var(--interactive-ghost-text)] hover:text-[var(--text-link-hover)] font-medium"
+                >
+                  Sign up
+                </Link>{" "}
+                to save this consultation permanently.
+              </p>
+              <button
+                onClick={() => setShowSignupPrompt(false)}
+                className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] ml-4 rounded-[var(--radius-skeleton)] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset)]"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Main Content - Timeline */}
+          {/* Show timeline when there are messages - handles all statuses consistently */}
+          {messages.length > 0 && (
+            <div className="relative">
+              {/* Vertical Line */}
+              <div className="absolute left-2.5 sm:left-3 top-6 bottom-0 w-0.5 bg-linear-to-b from-[var(--gradient-warm-from)] via-[var(--interactive-primary)] to-[var(--gradient-page-to)]" />
+
+              {/* Exchanges */}
+              {exchanges.map((exchange, exchangeIdx) => {
+                const isFirst = exchangeIdx === 0;
+                const isEven = exchangeIdx % 2 === 0;
+                const isSourcesExpanded = exchange.output
+                  ? expandedSources.has(exchange.output.id)
+                  : false;
+                const feedback = exchange.output
+                  ? feedbackGiven[exchange.output.id]
+                  : null;
+
+                return (
+                  <div
+                    key={exchange.user.id}
+                    className={`${!isFirst ? `py-4 -mx-3 px-3 sm:-mx-4 sm:px-4 rounded-[var(--radius-card)] ${isEven ? "bg-[var(--surface-muted-translucent-subtle)]" : ""}` : ""}`}
+                  >
+                    {/* Question */}
+                    <div className="relative pl-8 sm:pl-10 pb-3 sm:pb-4">
+                      <div
+                        className={`absolute left-0 w-6 h-6 sm:w-7 sm:h-7 rounded-[var(--radius-avatar)] flex items-center justify-center ${
+                          isFirst
+                            ? "bg-[var(--interactive-contextual)] text-[var(--interactive-contextual-text)]"
+                            : "bg-[var(--status-info-bg)] border-2 border-[var(--status-info-border)]"
+                        }`}
+                      >
+                        {isFirst ? (
+                          <svg
+                            className="w-3.5 h-3.5 sm:w-4 sm:h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        ) : (
+                          <span className="text-xs text-[var(--status-info-text)]">
+                            +
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span
+                          className={`text-xs font-semibold uppercase tracking-wide ${
+                            isFirst
+                              ? "text-[var(--text-accent)]"
+                              : "text-[var(--status-info-text)]"
+                          }`}
+                        >
+                          {isFirst ? "Your Question" : "Follow-up"}
+                        </span>
+                        {exchange.user.created_at && (
+                          <time
+                            dateTime={exchange.user.created_at}
+                            className="text-[10px] text-[var(--text-muted)]"
+                            title={new Date(exchange.user.created_at).toLocaleString()}
+                          >
+                            {formatRelativeTime(exchange.user.created_at)}
+                          </time>
+                        )}
+                      </div>
+                      <div
+                        className={`rounded-[var(--radius-card)] p-3 sm:p-4 ${
+                          isFirst
+                            ? "bg-[var(--surface-elevated)] shadow-[var(--shadow-dropdown)] border-2 border-[var(--border-warm)]"
+                            : "bg-[var(--status-info-bg)] border border-[var(--status-info-border)]"
+                        }`}
+                      >
+                        <p
+                          className={`leading-relaxed whitespace-pre-wrap ${isFirst ? "text-[var(--text-primary)] text-sm sm:text-base" : "text-[var(--text-secondary)] text-sm"}`}
+                        >
+                          {exchange.user.content}
+                        </p>
+                        {isFirst &&
+                          ((caseData.stakeholders?.length ?? 0) > 1 ||
+                            (caseData.stakeholders?.[0] &&
+                              caseData.stakeholders[0] !== "self") ||
+                            (caseData.constraints?.length ?? 0) > 0 ||
+                            (caseData.role &&
+                              caseData.role !== "Individual")) && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {caseData.role &&
+                                caseData.role !== "Individual" && (
+                                  <span className="text-xs bg-[var(--badge-warm-bg)] text-[var(--badge-warm-text)] px-2 py-1 rounded-[var(--radius-chip)] font-medium">
+                                    {caseData.role}
+                                  </span>
+                                )}
+                              {caseData.stakeholders
+                                ?.filter((s) => s !== "self")
+                                .map((s, i) => (
+                                  <span
+                                    key={i}
+                                    className="text-xs bg-[var(--badge-default-bg)] text-[var(--text-tertiary)] px-2 py-1 rounded-[var(--radius-chip)]"
+                                  >
+                                    {s}
+                                  </span>
+                                ))}
+                            </div>
+                          )}
+                      </div>
+                    </div>
+
+                    {/* Status indicator - show when no assistant response yet */}
+                    {!exchange.assistant && (
+                      <div className="relative pl-8 sm:pl-10 pb-4 sm:pb-6">
+                        {/* Draft state */}
+                        {isDraft && (
+                          <>
+                            <div className="absolute left-0 w-6 h-6 sm:w-7 sm:h-7 rounded-[var(--radius-avatar)] bg-[var(--badge-warm-bg)] border-2 border-[var(--border-warm)] flex items-center justify-center">
+                              <span className="text-xs">📝</span>
+                            </div>
+                            <div className="bg-[var(--status-warning-bg)] border border-[var(--status-warning-border)] rounded-[var(--radius-card)] px-4 py-3">
+                              <p className="text-sm text-[var(--status-warning-text)] mb-3">
+                                <span className="font-medium">Draft</span> —
+                                Your question is saved. Click below to receive
+                                wisdom from the Bhagavad Gita.
+                              </p>
+                              <button
+                                onClick={handleRetry}
+                                className="px-4 py-2 bg-[var(--interactive-primary)] hover:bg-[var(--interactive-primary-hover)] text-[var(--interactive-primary-text)] text-sm font-medium rounded-[var(--radius-button)] transition-[var(--transition-color)]"
+                              >
+                                Get Guidance
+                              </button>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Processing state - uses unified ThinkingIndicator (only for initial, not follow-ups) */}
+                        {isProcessing && !pendingFollowUp && (
+                          <ThinkingIndicator variant="initial" />
+                        )}
+
+                        {/* Failed state */}
+                        {isFailed && (
+                          <>
+                            <div className="absolute left-0 w-6 h-6 sm:w-7 sm:h-7 rounded-[var(--radius-avatar)] bg-[var(--status-error-bg)] border-2 border-[var(--status-error-border)] flex items-center justify-center">
+                              <span className="text-xs">⏳</span>
+                            </div>
+                            <div className="bg-[var(--status-error-bg)] border border-[var(--status-error-border)] rounded-[var(--radius-card)] px-4 py-3">
+                              <p className="text-sm text-[var(--status-error-text)] mb-3">
+                                <span className="font-medium">
+                                  Taking Longer Than Expected
+                                </span>{" "}
+                                — Your consultation is still being prepared.
+                                Please check back in a few minutes, or try
+                                again.
+                              </p>
+                              <button
+                                onClick={handleRetry}
+                                className="px-4 py-2 bg-[var(--interactive-primary)] hover:bg-[var(--interactive-primary-hover)] text-[var(--interactive-primary-text)] text-sm font-medium rounded-[var(--radius-button)] transition-[var(--transition-color)]"
+                              >
+                                Try Again
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Response - only show if assistant message exists */}
+                    {exchange.assistant && (
+                      <div className="relative pl-8 sm:pl-10 pb-4 sm:pb-6">
+                        <div
+                          className={`absolute left-0 w-6 h-6 sm:w-7 sm:h-7 rounded-[var(--radius-avatar)] flex items-center justify-center ${
+                            isFirst
+                              ? "bg-[var(--interactive-primary)] text-[var(--interactive-primary-text)]"
+                              : "bg-[var(--option-selected-bg)] border-2 border-[var(--option-selected-border)]"
+                          }`}
+                        >
+                          {isFirst ? (
+                            <svg
+                              className="w-3.5 h-3.5 sm:w-4 sm:h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                              />
+                            </svg>
+                          ) : (
+                            <span className="text-xs text-[var(--interactive-ghost-text)]">
+                              ~
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className={`flex items-center justify-between mb-2`}
+                        >
+                          <span
+                            className={`text-xs font-semibold uppercase tracking-wide ${
+                              isFirst
+                                ? "text-[var(--interactive-ghost-text)]"
+                                : "text-[var(--interactive-ghost-text)]"
+                            }`}
+                          >
+                            {isFirst ? "Wisdom from the Gita" : "Guidance"}
+                          </span>
+                          <SpeakButton
+                            text={exchange.assistant.content}
+                            lang="en"
+                            size="sm"
+                            aria-label="Listen to guidance"
+                          />
+                        </div>
+
+                        <div
+                          className={`rounded-[var(--radius-card)] p-3 sm:p-4 border ${
+                            isFirst
+                              ? "bg-[var(--surface-elevated)] shadow-[var(--shadow-dropdown)] border-[var(--border-warm)]"
+                              : "bg-[var(--surface-elevated)] shadow-[var(--shadow-card)] border-[var(--border-warm-subtle)]"
+                          }`}
+                        >
+                          <GuidanceMarkdown
+                            content={exchange.assistant.content}
+                            sources={exchange.output?.result_json.sources}
+                            className={`leading-relaxed prose max-w-none ${isFirst ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"} prose-p:my-2 prose-ul:my-2 prose-li:my-0.5`}
+                          />
+
+                          {/* Scholar flag with refine option */}
+                          {exchange.output?.scholar_flag && (
+                            <div className="mt-3 bg-[var(--status-warning-bg)] border border-[var(--status-warning-border)] rounded-[var(--radius-button)] p-3">
+                              <div className="flex items-center gap-2 text-[var(--status-warning-text)] text-sm font-medium">
+                                <span>⚠️</span>
+                                <span>This guidance has lower confidence</span>
+                              </div>
+                              {showFollowUpInput && (
+                                <button
+                                  onClick={() =>
+                                    handleRefineGuidance(
+                                      "Can you provide more detail or clarify the recommended approach?",
+                                    )
+                                  }
+                                  className="mt-2 text-sm text-[var(--text-accent)] hover:text-[var(--text-link-hover)] hover:underline flex items-center gap-1 rounded-[var(--radius-skeleton)] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset)]"
+                                >
+                                  <svg
+                                    className="w-3.5 h-3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                                    />
+                                  </svg>
+                                  Ask a follow-up to refine this guidance
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Verse Sources */}
+                          {exchange.output &&
+                            exchange.output.result_json.sources?.length > 0 && (
+                              <div className="mt-4">
+                                <button
+                                  onClick={() =>
+                                    exchange.output &&
+                                    toggleSources(exchange.output.id)
+                                  }
+                                  className="min-h-[44px] px-3 py-2 -ml-3 text-sm font-medium text-[var(--interactive-ghost-text)] hover:text-[var(--text-link-hover)] hover:bg-[var(--surface-muted)] flex items-center gap-2 rounded-[var(--radius-button)] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset)] transition-[var(--transition-color)]"
+                                >
+                                  <svg
+                                    className={`w-4 h-4 transition-transform ${isSourcesExpanded ? "rotate-90" : ""}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 5l7 7-7 7"
+                                    />
+                                  </svg>
+                                  {exchange.output.result_json.sources.length}{" "}
+                                  verse reference
+                                  {exchange.output.result_json.sources.length >
+                                  1
+                                    ? "s"
+                                    : ""}
+                                </button>
+
+                                {isSourcesExpanded && (
+                                  <div className="mt-3 space-y-2">
+                                    {exchange.output.result_json.sources.map(
+                                      (source) => (
+                                        <div
+                                          key={source.canonical_id}
+                                          className="bg-linear-to-r from-[var(--gradient-warm-from)] to-[var(--gradient-warm-to)] rounded-[var(--radius-button)] p-3 border border-[var(--border-warm-subtle)]"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <Link
+                                              to={`/verses/${source.canonical_id}`}
+                                              className="font-mono text-[var(--interactive-ghost-text)] font-semibold text-sm hover:underline"
+                                            >
+                                              {formatVerseRef(source.canonical_id)}
+                                            </Link>
+                                            {source.is_anchor && (
+                                              <span className="px-1.5 py-0.5 text-xs font-medium text-[var(--text-accent)] bg-[var(--badge-warm-bg)] rounded-[var(--radius-skeleton)]">
+                                                Anchor verse
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="mt-1.5 text-[var(--text-secondary)] italic text-sm">
+                                            "{source.paraphrase}"
+                                          </p>
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                          {/* Feedback row */}
+                          {exchange.output && (
+                            <OutputFeedback
+                              output={exchange.output}
+                              feedback={feedback}
+                              feedbackLoading={feedbackLoading}
+                              expandedFeedback={expandedFeedback}
+                              savedComment={savedComment}
+                              feedbackText={feedbackText}
+                              onFeedback={handleFeedback}
+                              onEditFeedback={handleEditFeedback}
+                              onSubmitNegativeFeedback={
+                                handleSubmitNegativeFeedback
+                              }
+                              onCancelFeedback={handleCancelFeedback}
+                              onFeedbackTextChange={handleFeedbackTextChange}
+                            />
+                          )}
+
+                          {/* Interpretive tradition disclosure - subtle, first exchange only */}
+                          {isFirst && (
+                            <div className="mt-4 pt-3 border-t border-[var(--border-default)] flex items-center justify-between gap-4">
+                              <p className="text-[10px] sm:text-xs text-[var(--text-muted)] italic">
+                                AI-generated guidance based on Bhagavad Gita
+                                verses.{" "}
+                                <Link
+                                  to="/about#our-approach"
+                                  className="underline hover:text-[var(--text-secondary)]"
+                                >
+                                  Learn about our approach
+                                </Link>
+                              </p>
+                              {hasSummary && (
+                                <button
+                                  onClick={scrollToSummary}
+                                  className="flex items-center gap-1 text-[10px] sm:text-xs text-[var(--text-accent)] hover:text-[var(--text-accent-hover)] font-medium whitespace-nowrap transition-[var(--transition-color)]"
+                                >
+                                  <span>Summary</span>
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Follow-up thinking indicator - shows during submission and background processing */}
+              {/* Don't show pendingMessage if it's already in the messages list (async flow adds it immediately) */}
+              {(submittingFollowUp || isProcessing) && pendingFollowUp && (
+                <ThinkingIndicator
+                  variant="followup"
+                  pendingMessage={
+                    messages.some(
+                      (m) => m.role === "user" && m.content === pendingFollowUp,
+                    )
+                      ? undefined
+                      : pendingFollowUp
+                  }
+                />
+              )}
+
+              {/* Follow-up Input - at end of conversation flow */}
+              {showFollowUpInput && (
+                <div
+                  ref={followUpInputRef}
+                  className="relative pl-8 sm:pl-10 pt-2 pb-4"
+                >
+                  <div className="absolute left-0 w-6 h-6 sm:w-7 sm:h-7 rounded-[var(--radius-avatar)] bg-[var(--badge-default-bg)] border-2 border-[var(--border-default)] flex items-center justify-center">
+                    <svg
+                      className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[var(--text-muted)]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                  </div>
+                  <FollowUpInput
+                    value={followUp}
+                    submitting={submittingFollowUp}
+                    disabled={submittingFollowUp}
+                    error={followUpError}
+                    onChange={(val) => {
+                      setFollowUp(val);
+                      if (followUpError) setFollowUpError(null);
+                    }}
+                    onSubmit={handleFollowUpSubmit}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Guidance Summary - Static sections from initial analysis */}
+          {firstOutput &&
+            (firstOutput.result_json.options?.length > 0 ||
+              (typeof firstOutput.result_json.recommended_action === "object" &&
+                (firstOutput.result_json.recommended_action.steps?.length ??
+                  0) > 0) ||
+              firstOutput.result_json.reflection_prompts?.length > 0) && (
+              <div
+                ref={summaryRef}
+                className="mt-8 pt-6 border-t border-[var(--border-warm-subtle)]"
+              >
+                {/* Section Header */}
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-[var(--radius-avatar)] bg-[var(--badge-warm-bg)] flex items-center justify-center">
+                    <svg
+                      className="w-4 h-4 text-[var(--interactive-ghost-text)]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                      Guidance Summary
+                    </h2>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Key insights from your consultation
+                    </p>
+                  </div>
+                </div>
+
+                {/* Paths/Options Section */}
+                {firstOutput.result_json.options?.length > 0 && (
+                  <PathsSection
+                    options={firstOutput.result_json.options}
+                    selectedOption={selectedOption}
+                    showPaths={showPaths}
+                    onToggle={() => setShowPaths(!showPaths)}
+                    onSelectOption={setSelectedOption}
+                  />
+                )}
+
+                {/* Recommended Steps */}
+                {typeof firstOutput.result_json.recommended_action ===
+                  "object" &&
+                  (firstOutput.result_json.recommended_action.steps?.length ??
+                    0) > 0 && (
+                    <StepsSection
+                      steps={
+                        (
+                          firstOutput.result_json.recommended_action as {
+                            steps: string[];
+                          }
+                        ).steps
+                      }
+                      showSteps={showSteps}
+                      onToggle={() => setShowSteps(!showSteps)}
+                    />
+                  )}
+
+                {/* Reflection Prompts */}
+                {firstOutput.result_json.reflection_prompts?.length > 0 && (
+                  <ReflectionsSection
+                    prompts={firstOutput.result_json.reflection_prompts}
+                    showReflections={showReflections}
+                    onToggle={() => setShowReflections(!showReflections)}
+                  />
+                )}
+              </div>
+            )}
+        </div>
+      </main>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        title="Delete Consultation"
+        message={`Are you sure you want to delete "${caseData?.title}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Keep"
+        variant="danger"
+        loading={deleteLoading}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
+    </div>
+  );
+}

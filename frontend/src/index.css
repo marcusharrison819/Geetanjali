@@ -1,0 +1,352 @@
+@import 'tailwindcss';
+
+/* Self-hosted fonts (v1.21.0 - Performance optimization) */
+/* Critical fonts loaded initially, theme fonts lazy-loaded on switch */
+@import './styles/fonts/devanagari.css';  /* Always: Sanskrit verse rendering */
+@import './styles/fonts/geetanjali.css';  /* Default theme: Spectral + Source Sans 3 */
+
+@import './styles/tokens/primitives.css';
+@import './styles/tokens/semantic.css';
+@import './styles/tokens/derived.css';
+
+@config '../tailwind.config.js';
+
+/*
+ * Design Token System (v1.16.0)
+ *
+ * 3-Tier Architecture:
+ * 1. Primitives: Raw color scales (user-customizable)
+ * 2. Semantic: Meaningful names referencing primitives
+ * 3. Derived: State-specific tokens (hover, focus, etc.)
+ *
+ * Usage: Components use semantic/derived tokens via Tailwind arbitrary values
+ * Example: bg-[--surface-warm] or hover:bg-[--interactive-primary-hover]
+ */
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border-default);
+  }
+
+  /* Focus indicators for Windows High Contrast Mode (forced-colors).
+     Tailwind's ring utilities use box-shadow which is stripped in HCM.
+     This transparent outline becomes visible only in forced-colors mode. */
+  :focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * Typography System (v1.11.0)
+ * - font-body: Source Sans 3 (default for all text)
+ * - font-heading: Spectral (headings, titles)
+ * - font-sanskrit: Noto Serif Devanagari (Sanskrit verses)
+ * - font-serif: Spectral (legacy serif usage)
+ *
+ * Color System (v1.12.0)
+ * CSS custom properties for animations and dynamic styling.
+ * Maps to Tailwind palette for consistency.
+ */
+:root {
+  /* Default body font - Source Sans 3 */
+  font-family:
+    "Source Sans 3",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+
+  /* Animation colors - Sacred Saffron / Turmeric Gold (v1.22.0) */
+  --color-amber-400: 230 184 48;    /* #E6B830 - Turmeric Gold warm-400 shimmer */
+  --color-orange-400: 224 123 60;   /* #E07B3C - Sacred Saffron primary-400 glow */
+}
+
+html {
+  /* Prevent layout shift when scrollbar appears/disappears between pages */
+  overflow-y: scroll; /* Fallback for older browsers */
+  scrollbar-gutter: stable; /* Modern browsers: reserve space without showing scrollbar */
+  /* Prevent overscroll bounce from triggering virtualized grid recalculations */
+  overscroll-behavior-y: contain;
+}
+
+body {
+  background-color: var(--surface-base);
+  color: var(--text-primary);
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
+
+/* Horizontal slide animations for swipe navigation */
+@keyframes slide-in-from-left {
+  from {
+    opacity: 0.6;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-from-right {
+  from {
+    opacity: 0.6;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-from-left {
+  animation: slide-in-from-left 0.2s ease-out forwards;
+}
+
+.animate-slide-in-from-right {
+  animation: slide-in-from-right 0.2s ease-out forwards;
+}
+
+/* ============================================
+   Thinking/Processing Animations
+   ============================================ */
+
+/* Subtle shimmer effect - light sweep across surface */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--color-amber-400) / 0.1) 25%,
+    rgb(var(--color-amber-400) / 0.2) 50%,
+    rgb(var(--color-amber-400) / 0.1) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Pulsing glow border for thinking containers */
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px rgb(var(--color-orange-400) / 0.3),
+      0 0 16px rgb(var(--color-orange-400) / 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgb(var(--color-orange-400) / 0.4),
+      0 0 32px rgb(var(--color-orange-400) / 0.2);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Sequenced dot pulse (more refined than bounce) */
+@keyframes dot-pulse {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+.animate-dot-pulse {
+  animation: dot-pulse 1.4s ease-in-out infinite;
+}
+
+/* Fade out animation for sync status indicator */
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-fadeOut {
+  animation: fade-out 0.5s ease-out 1s forwards;
+}
+
+/* Hide scrollbar but allow scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ============================================
+   Reduced Motion - Respect user preferences
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================
+   Print Styles - Optimized for consultations
+   ============================================ */
+@media print {
+  /* Hide non-essential elements */
+  nav,
+  footer,
+  .no-print,
+  button:not(.print-visible),
+  [role="navigation"],
+  [aria-label="Skip to main content"],
+  .floating-action-button {
+    display: none !important;
+  }
+
+  /* Reset backgrounds and colors for printing */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  /* Ensure content uses full width */
+  main,
+  .container,
+  .max-w-4xl,
+  .max-w-3xl {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Verse cards - clean print layout */
+  .verse-card,
+  [data-print="verse"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #ccc !important;
+    padding: 1rem !important;
+    margin-bottom: 1rem !important;
+    background: white !important;
+  }
+
+  /* Consultation sections */
+  .consultation-section,
+  [data-print="section"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 1.5rem !important;
+  }
+
+  /* Links - show URL in print */
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  /* Internal links - don't show URL */
+  a[href^="/"]:after,
+  a[href^="#"]:after {
+    content: none;
+  }
+
+  /* Headers */
+  h1,
+  h2,
+  h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Print header */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #000;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 2cm;
+  }
+
+  /* First page */
+  @page :first {
+    margin-top: 3cm;
+  }
+}
